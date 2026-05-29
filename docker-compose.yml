@@ -1,0 +1,10 @@
+name: fiapx-web
+
+services:
+  nginx:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./src:/usr/share/nginx/html:ro
+      - ./default.conf:/etc/nginx/conf.d/default.conf:ro
