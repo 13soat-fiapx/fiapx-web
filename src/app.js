@@ -9,9 +9,10 @@ const mockVideos = [
 
 function go(page) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('[data-nav]').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
-  document.getElementById('nav-'+page).classList.add('active');
+  const activeButton = document.querySelector('#page-'+page+' [data-nav="'+page+'"]') || document.getElementById('nav-'+page);
+  if(activeButton) activeButton.classList.add('active');
   renderNavAuth();
   if(page==='upload') renderUploadAuth();
   if(page==='status') {renderStatusAuth(); renderVideos();}
@@ -21,23 +22,19 @@ function renderNavAuth() {
   const isAuthenticated = !!token;
   document.getElementById('nav-login').style.display = isAuthenticated ? 'none' : 'inline-flex';
   document.getElementById('nav-register').style.display = isAuthenticated ? 'none' : 'inline-flex';
-  document.getElementById('nav-upload').style.display = isAuthenticated ? 'inline-flex' : 'none';
-  document.getElementById('nav-status').style.display = isAuthenticated ? 'inline-flex' : 'none';
+  document.getElementById('header-auth').style.display = isAuthenticated ? 'flex' : 'none';
+  document.getElementById('header-email').textContent = userEmail||'usuario';
 }
 
 function renderUploadAuth() {
   document.getElementById('unauth-upload').style.display = token ? 'none' : 'block';
   document.getElementById('auth-upload').style.display = token ? 'block' : 'none';
-  if(token) {
-    document.getElementById('up-user').textContent = userEmail||'usuario';
-    document.getElementById('up-token').textContent = 'Bearer ' + token.substring(0,40)+'…';
-  }
+  if(token) document.getElementById('up-token').textContent = 'Bearer ' + token.substring(0,40)+'…';
 }
 
 function renderStatusAuth() {
   document.getElementById('unauth-status').style.display = token ? 'none' : 'block';
   document.getElementById('auth-status').style.display = token ? 'block' : 'none';
-  if(token) document.getElementById('st-user').textContent = userEmail||'usuario';
 }
 
 function renderVideos() {
@@ -77,7 +74,7 @@ function doLogin() {
     token = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.demo_payload_' + btoa(email);
     userEmail = email;
     renderNavAuth();
-    go('upload');
+    go('status');
   },900);
 }
 

@@ -14,11 +14,13 @@
     <div class="header">
       <div class="logo">FIAP<span>&nbsp;</span>X <span>:: video processing</span></div>
       <nav class="nav" id="nav">
-        <button onclick="go('login')" id="nav-login" class="active">login</button>
-        <button onclick="go('register')" id="nav-register">cadastro</button>
-        <button onclick="go('upload')" id="nav-upload">upload</button>
-        <button onclick="go('status')" id="nav-status">vídeos</button>
+        <button onclick="go('login')" id="nav-login" class="active" data-nav="login">login</button>
+        <button onclick="go('register')" id="nav-register" data-nav="register">cadastro</button>
       </nav>
+      <div class="header-auth" id="header-auth" style="display:none">
+        <span class="user" id="header-email">-</span>
+        <button class="btn btn-sm btn-danger" onclick="doLogout()">logout</button>
+      </div>
     </div>
 
     <div id="page-login" class="page active">
@@ -70,12 +72,10 @@
           <div style="font-size:12px;color:var(--muted)">Faça login primeiro para enviar vídeos.</div>
       </div>
       <div id="auth-upload">
-        <div class="auth-row">
-          <span>logado como</span>
-          <span class="user" id="up-user">-</span>
-          <button class="btn btn-sm" onclick="doLogout()" style="margin-left:auto">sair</button>
+        <div class="page-nav auth-row">
+          <button class="nav-tab" onclick="go('status')" data-nav="status">vídeos</button>
+          <button class="nav-tab" onclick="go('upload')" data-nav="upload">upload</button>
         </div>
-        <div class="token-bar" id="up-token">Bearer eyJ...</div>
         <div class="card">
             <div class="card-title">enviar vídeo</div>
           <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
@@ -110,14 +110,15 @@
           <div style="font-size:12px;color:var(--muted)">Faça login para ver seus vídeos.</div>
       </div>
       <div id="auth-status">
-        <div class="auth-row">
-          <span>logado como</span>
-          <span class="user" id="st-user">-</span>
-          <button class="btn btn-sm" onclick="refreshStatus()" style="margin-left:auto">atualizar</button>
-          <button class="btn btn-sm btn-danger" onclick="doLogout()">sair</button>
+        <div class="page-nav auth-row">
+          <button class="nav-tab" onclick="go('status')" data-nav="status">vídeos</button>
+          <button class="nav-tab" onclick="go('upload')" data-nav="upload">upload</button>
         </div>
         <div class="card">
-            <div class="card-title">meus vídeos</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+              <div class="card-title" style="margin-bottom:0">meus vídeos</div>
+              <button class="btn btn-sm" onclick="refreshStatus()">atualizar</button>
+            </div>
           <table class="table">
             <thead>
               <tr>
