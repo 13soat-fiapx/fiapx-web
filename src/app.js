@@ -80,14 +80,27 @@ async function doRegister() {
   const pass = document.getElementById('r-pass').value;
   const err = document.getElementById('reg-err');
   const ok = document.getElementById('reg-ok');
+
+  function isStrongPassword(p) {
+    const checks = [/[A-Z]/, /[a-z]/, /[0-9]/, /[^A-Za-z0-9]/];
+    return p.length >= 8 && checks.filter(r => r.test(p)).length >= 3;
+  }
+
   err.style.display = 'none'; ok.style.display = 'none';
   if (!name || !email || !pass) { showAlert(err, 'preencha todos os campos'); return; }
   if (pass.length < 8) { showAlert(err, 'senha deve ter no mínimo 8 caracteres'); return; }
+  if (!isStrongPassword(pass)) { showAlert(err, 'senha deve conter pelo menos 3 dos seguintes tipos de caracteres: letra maiúscula, letra minúscula, número e caractere especial'); return; }
   try {
-    const res = await fetch(`${CONFIG.API_BASE}/users`, {
+    const res = await fetch(`https://${CONFIG.AUTH0_DOMAIN}/dbconnections/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password: pass }),
+      body: JSON.stringify({
+        client_id: CONFIG.AUTH0_CLIENT_ID,
+        connection: 'Username-Password-Authentication',
+        email,
+        password: pass,
+        user_metadata: { name },
+      }),
     });
     const data = await res.json();
     if (!res.ok) { showAlert(err, data.message || 'erro ao criar conta'); return; }
