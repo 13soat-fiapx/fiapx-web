@@ -4,13 +4,18 @@
   <meta charset="utf-8">
   <title>FIAP X</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>
 <div class="shell">
 
   <!-- header: logo + email/logout quando autenticado -->
   <div class="header" style="margin-bottom:0">
-    <div class="logo">FIAP<span>&nbsp;</span>X <span>:: video processing</span></div>
+    <div class="logo-wrap">
+      <img src="logo.svg" alt="FIAP X" height="24">
+      <span class="logo-sub">video processing</span>
+    </div>
     <div class="header-auth" id="header-auth" style="display:none">
       <span class="user" id="header-email"></span>
       <button class="btn btn-sm btn-danger" onclick="doLogout()">logout</button>
