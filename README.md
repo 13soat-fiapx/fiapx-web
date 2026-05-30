@@ -4,7 +4,6 @@ Interface web para o sistema FIAP X de processamento de vídeos.
 
 ## Tecnologias
 
-- [Alpine.js](https://alpinejs.dev/)
 - [Auth0](https://auth0.com/)
 - [Nginx](https://nginx.org/)
 
@@ -42,5 +41,4 @@ Acesse a interface em [http://localhost:8080](http://localhost:8080).
 ## Links úteis
 
 - [Auth0 Dashboard](https://manage.auth0.com)
-- [Documentação do Alpine.js](https://alpinejs.dev/)
 - [Nginx - documentação oficial](https://nginx.org/en/docs/)
