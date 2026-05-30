@@ -1,5 +1,11 @@
-FROM nginx:alpine
+FROM nginx:1.31.1-alpine
+
+COPY src/* /usr/share/nginx/html/
+COPY default.conf /etc/nginx/conf.d/default.conf
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 8080
 
-CMD ["nginx", "-g", "daemon off;"]
+ENTRYPOINT ["/entrypoint.sh"]

@@ -1,152 +1,146 @@
 <!doctype html>
 <html lang="pt-BR">
-
 <head>
   <meta charset="utf-8">
   <title>FIAP X</title>
-
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
+<div class="shell">
 
-  <div class="shell">
-    <div class="header">
-      <div class="logo">FIAP<span>&nbsp;</span>X <span>:: video processing</span></div>
-      <nav class="nav" id="nav">
-        <button onclick="go('login')" id="nav-login" class="active" data-nav="login">login</button>
-        <button onclick="go('register')" id="nav-register" data-nav="register">cadastro</button>
-      </nav>
-      <div class="header-auth" id="header-auth" style="display:none">
-        <span class="user" id="header-email">-</span>
-        <button class="btn btn-sm btn-danger" onclick="doLogout()">logout</button>
-      </div>
+  <!-- header: logo + email/logout quando autenticado -->
+  <div class="header" style="margin-bottom:0">
+    <div class="logo">FIAP<span>&nbsp;</span>X <span>:: video processing</span></div>
+    <div class="header-auth" id="header-auth" style="display:none">
+      <span class="user" id="header-email"></span>
+      <button class="btn btn-sm btn-danger" onclick="doLogout()">logout</button>
     </div>
+  </div>
 
-    <div id="page-login" class="page active">
-      <div class="card">
-        <div class="card-title">autenticação</div>
-        <div class="alert alert-err" id="login-err"></div>
-        <div class="field"><label>e-mail</label><input type="email" id="l-email" placeholder="usuario@email.com"
-            value="demo@fiapx.io"></div>
-        <div class="field"><label>senha</label><input type="password" id="l-pass" placeholder="••••••••"
-            value="Demo@1234"></div>
-        <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
-          <button class="btn btn-primary" onclick="doLogin()">entrar</button>
-          <span style="font-size:11px;color:var(--muted)" id="login-loading"></span>
-        </div>
-        <div class="divider" style="margin-top:18px"><span>endpoint</span></div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.8">
-          POST https://{tenant}.auth0.com/oauth/token<br>
-          grant_type: password<br>
-          audience: {API_IDENTIFIER}<br>
-          client_id: {CLIENT_ID}
-        </div>
-      </div>
-    </div>
+  <!-- tab bar: troca dinamicamente entre estado anon e autenticado -->
+  <div class="tabbar" id="tabbar">
+    <!-- preenchida por renderTabbar() -->
+  </div>
 
-    <div id="page-register" class="page">
-      <div class="card">
-          <div class="card-title">novo usuário</div>
-        <div class="alert alert-err" id="reg-err"></div>
-        <div class="alert alert-ok" id="reg-ok"></div>
-        <div class="row">
-          <div class="field"><label>nome</label><input type="text" id="r-name" placeholder="Nome completo"></div>
-        </div>
-        <div class="field"><label>e-mail</label><input type="email" id="r-email" placeholder="usuario@email.com"></div>
-        <div class="field"><label>senha</label><input type="password" id="r-pass" placeholder="min. 8 caracteres"></div>
-        <div style="margin-top:4px">
-          <button class="btn btn-primary" onclick="doRegister()">criar conta</button>
-        </div>
-        <div class="divider" style="margin-top:18px"><span>endpoint</span></div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.8">
-          POST {API_BASE}/users<br>
-          body: {"{name, email, password}"}<br>
-          <span style="color:var(--accent)">→ chama Auth0 Management API no backend</span>
-        </div>
-      </div>
-    </div>
+  <!-- PAGINAS -->
 
-    <div id="page-upload" class="page">
-      <div id="unauth-upload" style="display:none" class="card">
-          <div style="font-size:12px;color:var(--muted)">Faça login primeiro para enviar vídeos.</div>
+  <div id="page-login" class="page active">
+    <div class="card">
+      <div class="card-title">autenticação</div>
+      <div class="alert alert-err" id="login-err"></div>
+      <div class="field">
+        <label>e-mail</label>
+        <input type="email" id="l-email" placeholder="usuario@email.com">
       </div>
-      <div id="auth-upload">
-        <div class="page-nav auth-row">
-          <button class="nav-tab" onclick="go('status')" data-nav="status">vídeos</button>
-          <button class="nav-tab" onclick="go('upload')" data-nav="upload">upload</button>
-        </div>
-        <div class="card">
-            <div class="card-title">enviar vídeo</div>
-          <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-            <input type="file" id="file-input" accept="video/*" onchange="onFileSelect(this)">
-            <div class="uz-icon">&#9654;</div>
-              <p>clique ou arraste um arquivo de vídeo</p>
-              <p style="font-size:10px;margin-top:4px">mp4, avi, mov, mkv — limite configurável</p>
-            <div class="filename" id="file-name"></div>
-          </div>
-          <div class="progress-wrap" id="prog-wrap">
-            <div class="progress-label"><span id="prog-label">enviando...</span><span id="prog-pct">0%</span></div>
-            <div class="progress-bar">
-              <div class="progress-fill" id="prog-fill"></div>
-            </div>
-          </div>
-          <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
-            <button class="btn btn-primary" onclick="doUpload()" id="btn-upload" disabled>enviar</button>
-            <span style="font-size:11px;color:var(--muted)" id="up-msg"></span>
-          </div>
-          <div class="divider" style="margin-top:18px"><span>endpoint</span></div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.8">
-            POST {API_BASE}/videos<br>
-            Authorization: Bearer {token}<br>
-            Content-Type: multipart/form-data
-          </div>
-        </div>
+      <div class="field">
+        <label>senha</label>
+        <input type="password" id="l-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
       </div>
-    </div>
-
-    <div id="page-status" class="page">
-      <div id="unauth-status" style="display:none" class="card">
-          <div style="font-size:12px;color:var(--muted)">Faça login para ver seus vídeos.</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+        <button class="btn btn-primary" onclick="doLogin()">entrar</button>
+        <span style="font-size:11px;color:var(--muted)" id="login-loading"></span>
       </div>
-      <div id="auth-status">
-        <div class="page-nav auth-row">
-          <button class="nav-tab" onclick="go('status')" data-nav="status">vídeos</button>
-          <button class="nav-tab" onclick="go('upload')" data-nav="upload">upload</button>
-        </div>
-        <div class="card">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
-              <div class="card-title" style="margin-bottom:0">meus vídeos</div>
-              <button class="btn btn-sm" onclick="refreshStatus()">atualizar</button>
-            </div>
-          <table class="table">
-            <thead>
-              <tr>
-                <th>arquivo</th>
-                <th>enviado em</th>
-                <th>status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="videos-body">
-              <tr>
-                <td colspan="4" class="empty">carregando...</td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="divider" style="margin-top:18px"><span>endpoint</span></div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.8">
-            GET {API_BASE}/videos<br>
-            Authorization: Bearer {token}<br>
-            <span style="color:var(--accent)">→ retorna apenas videos do usuario autenticado</span>
-          </div>
-        </div>
+      <div class="divider"><span>endpoint</span></div>
+      <div class="hint">
+        POST https://{tenant}.auth0.com/oauth/token<br>
+        grant_type: password<br>
+        audience: {API_IDENTIFIER}<br>
+        client_id: {CLIENT_ID}
       </div>
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <div id="page-register" class="page">
+    <div class="card">
+      <div class="card-title">novo usuário</div>
+      <div class="alert alert-err" id="reg-err"></div>
+      <div class="alert alert-ok"  id="reg-ok"></div>
+      <div class="field">
+        <label>nome</label>
+        <input type="text" id="r-name" placeholder="Nome completo">
+      </div>
+      <div class="field">
+        <label>e-mail</label>
+        <input type="email" id="r-email" placeholder="usuario@email.com">
+      </div>
+      <div class="field">
+        <label>senha</label>
+        <input type="password" id="r-pass" placeholder="min. 8 caracteres">
+      </div>
+      <div style="margin-top:4px">
+        <button class="btn btn-primary" onclick="doRegister()">criar conta</button>
+      </div>
+      <div class="divider"><span>endpoint</span></div>
+      <div class="hint">
+        POST {API_BASE}/users<br>
+        body: {"{name, email, password}"}<br>
+        <span class="hl">→ chama Auth0 Management API no backend</span>
+      </div>
+    </div>
+  </div>
 
+  <div id="page-upload" class="page">
+    <div class="card">
+      <div class="card-title">enviar vídeo</div>
+      <div class="alert alert-err" id="upload-err"></div>
+      <div class="alert alert-ok"  id="upload-ok"></div>
+      <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <input type="file" id="file-input" accept="video/*" onchange="onFileSelect(this)">
+        <div class="uz-icon">&#9654;</div>
+        <p>clique ou arraste um arquivo de vídeo</p>
+        <p style="font-size:10px;margin-top:4px">mp4, avi, mov, mkv — limite configurável</p>
+        <div class="filename" id="file-name"></div>
+      </div>
+      <div class="progress-wrap" id="prog-wrap">
+        <div class="progress-label">
+          <span id="prog-label">enviando...</span>
+          <span id="prog-pct">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+        <button class="btn btn-primary" onclick="doUpload()" id="btn-upload" disabled>enviar</button>
+        <span style="font-size:11px;color:var(--muted)" id="up-msg"></span>
+      </div>
+      <div class="divider"><span>endpoint</span></div>
+      <div class="hint">
+        POST {API_BASE}/videos<br>
+        Authorization: Bearer {token}<br>
+        Content-Type: multipart/form-data
+      </div>
+    </div>
+  </div>
+
+  <div id="page-status" class="page">
+    <div class="card">
+      <div class="status-header">
+        <div class="card-title">meus vídeos</div>
+        <button class="btn btn-sm" onclick="refreshStatus()">atualizar</button>
+      </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>arquivo</th>
+            <th>enviado em</th>
+            <th>status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="videos-body">
+          <tr><td colspan="4" class="empty">carregando...</td></tr>
+        </tbody>
+      </table>
+      <div class="divider"><span>endpoint</span></div>
+      <div class="hint">
+        GET {API_BASE}/videos<br>
+        Authorization: Bearer {token}<br>
+        <span class="hl">→ retorna apenas vídeos do usuário autenticado</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="config.js"></script>
+<script src="app.js"></script>
 </body>
-
 </html>
