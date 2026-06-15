@@ -18,7 +18,7 @@
     </a>
     <div class="header-auth" x-show="token">
       <span class="user" x-text="userEmail"></span>
-      <button class="btn btn-sm btn-danger" @click="logout()">logout</button>
+      <button class="btn btn-sm btn-danger" @click="logout()"><i class="ph-duotone ph-sign-out"></i> logout</button>
     </div>
   </div>
 
@@ -44,7 +44,7 @@
         <input type="password" x-model="loginPass" @keydown.enter="login()" placeholder="••••••••">
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
-        <button class="btn btn-primary" @click="login()" :disabled="loginLoading">entrar</button>
+        <button class="btn btn-primary" @click="login()" :disabled="loginLoading"><i class="ph-duotone ph-sign-in"></i> entrar</button>
         <span style="font-size:11px;color:var(--muted)" x-show="loginLoading">autenticando…</span>
       </div>
       <div class="divider"><span>endpoint</span></div>
@@ -80,7 +80,7 @@
         <input type="password" x-model="regPass" placeholder="min. 8 caracteres">
       </div>
       <div style="margin-top:4px">
-        <button class="btn btn-primary" @click="register()">criar conta</button>
+        <button class="btn btn-primary" @click="register()"><i class="ph-duotone ph-user-plus"></i> criar conta</button>
       </div>
       <div class="divider"><span>endpoint</span></div>
       <div class="hint">
@@ -109,7 +109,7 @@
            @dragleave="dragging = false"
            @drop.prevent="onDrop($event)">
         <input type="file" x-ref="fileInput" accept="video/*" @change="onFileSelect($event)">
-        <div class="uz-icon">&#9654;</div>
+        <div class="uz-icon"><i class="ph-duotone ph-cloud-arrow-up"></i></div>
         <p>clique ou arraste um arquivo de vídeo</p>
         <p style="font-size:10px;margin-top:4px">mp4, avi, mov, mkv — limite configurável</p>
         <div class="filename" x-text="fileName"></div>
@@ -124,7 +124,7 @@
         </div>
       </div>
       <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
-        <button class="btn btn-primary" @click="upload()" :disabled="!selectedFile || uploading">enviar</button>
+        <button class="btn btn-primary" @click="upload()" :disabled="!selectedFile || uploading"><i class="ph-duotone ph-cloud-arrow-up"></i> enviar</button>
         <span style="font-size:11px;color:var(--muted)" x-show="uploadMsg" x-text="uploadMsg"></span>
       </div>
       <div class="divider"><span>endpoint</span></div>
@@ -145,7 +145,7 @@
     <div class="card">
       <div class="status-header">
         <div class="card-title">meus vídeos</div>
-        <button class="btn btn-sm" @click="loadVideos()">atualizar</button>
+        <button class="btn btn-sm" @click="loadVideos()"><i class="ph-duotone ph-arrow-clockwise"></i> atualizar</button>
       </div>
       <table class="table">
         <thead>
@@ -171,8 +171,8 @@
                 </span>
               </td>
               <td>
-                <a x-show="v.status === 'done' && v.zip_url" :href="v.zip_url" class="btn btn-sm" style="text-decoration:none">download</a>
-                <button x-show="!(v.status === 'done' && v.zip_url)" class="btn btn-sm" disabled>download</button>
+                <a x-show="v.status === 'done' && v.zip_url" :href="v.zip_url" class="btn btn-sm" style="text-decoration:none"><i class="ph-duotone ph-download-simple"></i> download</a>
+                <button x-show="!(v.status === 'done' && v.zip_url)" class="btn btn-sm" disabled><i class="ph-duotone ph-download-simple"></i> download</button>
               </td>
             </tr>
           </template>
