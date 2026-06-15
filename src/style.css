@@ -293,7 +293,6 @@ input:focus { border-color: var(--accent-border); }
   border-radius: var(--radius);
   font-size: 12px;
   margin-bottom: 14px;
-  display: none;
 }
 .alert-err { background: var(--danger-dim); border: 1px solid rgba(248, 81, 73, 0.3); color: var(--danger); }
 .alert-ok { background: var(--success-dim); border: 1px solid rgba(86, 211, 100, 0.3); color: var(--success); }

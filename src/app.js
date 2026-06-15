@@ -5,10 +5,6 @@ const CONFIG = {
   API_BASE: window.__API_BASE__ || 'http://localhost:8080',
 };
 
-/**
- * @param {string} p
- * @returns {boolean}
- */
 const ROUTES = {
   login:    '/login',
   register: '/register',
@@ -279,8 +275,8 @@ function app() {
 
       xhr.addEventListener('load', () => {
         this.uploadProgress = 100;
-        this.uploadDone = true;
         if (xhr.status >= 200 && xhr.status < 300) {
+          this.uploadDone = true;
           this.uploadMsg = 'vídeo enviado — acompanhe em vídeos';
           this.selectedFile = null;
           this.fileName = '';
@@ -366,9 +362,10 @@ function app() {
       else if (page === 'status')
         text = `curl -s '${CONFIG.API_BASE}/videos' \\\n  -H 'Authorization: Bearer ${tok}'`;
       if (!text) return;
-      navigator.clipboard.writeText(text);
-      this.curlCopied = page;
-      setTimeout(() => { this.curlCopied = null; }, 1500);
+      navigator.clipboard.writeText(text).then(() => {
+        this.curlCopied = page;
+        setTimeout(() => { this.curlCopied = null; }, 1500);
+      }).catch(() => {});
     },
 
     // #endregion

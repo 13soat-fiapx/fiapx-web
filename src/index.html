@@ -6,7 +6,7 @@
   <link rel="stylesheet" href="style.css">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
-  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+  <script defer src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
 </head>
 <body x-data="app()">
 <div class="shell" x-cloak>
@@ -54,7 +54,7 @@
         audience: <span x-text="config.AUTH0_AUDIENCE"></span><br>
         client_id: <span x-text="config.AUTH0_CLIENT_ID"></span>
       </div>
-      <div class="curl-block" @click="copyCurl('login')" title="copiar curl">
+      <div class="curl-block" role="button" tabindex="0" @click="copyCurl('login')" @keydown.enter.prevent="copyCurl('login')" @keydown.space.prevent="copyCurl('login')" title="copiar curl">
         <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'login'" x-transition.opacity.duration.150ms></i>
         <i class="ph-duotone ph-check curl-icon copied"  x-show="curlCopied === 'login'"  x-transition.opacity.duration.150ms></i>
         <pre x-text="curlDisplay('login')"></pre>
@@ -89,7 +89,7 @@
         connection: Username-Password-Authentication<br>
         body: {"{email, password, user_metadata: { name }}"}
       </div>
-      <div class="curl-block" @click="copyCurl('register')" title="copiar curl">
+      <div class="curl-block" role="button" tabindex="0" @click="copyCurl('register')" @keydown.enter.prevent="copyCurl('register')" @keydown.space.prevent="copyCurl('register')" title="copiar curl">
         <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'register'" x-transition.opacity.duration.150ms></i>
         <i class="ph-duotone ph-check curl-icon copied"  x-show="curlCopied === 'register'"  x-transition.opacity.duration.150ms></i>
         <pre x-text="curlDisplay('register')"></pre>
@@ -133,7 +133,7 @@
         Authorization: Bearer ••••••••••••<br>
         Content-Type: multipart/form-data
       </div>
-      <div class="curl-block" @click="copyCurl('upload')" title="copiar curl">
+      <div class="curl-block" role="button" tabindex="0" @click="copyCurl('upload')" @keydown.enter.prevent="copyCurl('upload')" @keydown.space.prevent="copyCurl('upload')" title="copiar curl">
         <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'upload'" x-transition.opacity.duration.150ms></i>
         <i class="ph-duotone ph-check curl-icon copied"  x-show="curlCopied === 'upload'"  x-transition.opacity.duration.150ms></i>
         <pre x-text="curlDisplay('upload')"></pre>
@@ -184,7 +184,7 @@
         Authorization: Bearer ••••••••••••<br>
         <span class="hl">→ retorna apenas vídeos do usuário autenticado</span>
       </div>
-      <div class="curl-block" @click="copyCurl('status')" title="copiar curl">
+      <div class="curl-block" role="button" tabindex="0" @click="copyCurl('status')" @keydown.enter.prevent="copyCurl('status')" @keydown.space.prevent="copyCurl('status')" title="copiar curl">
         <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'status'" x-transition.opacity.duration.150ms></i>
         <i class="ph-duotone ph-check curl-icon copied"  x-show="curlCopied === 'status'"  x-transition.opacity.duration.150ms></i>
         <pre x-text="curlDisplay('status')"></pre>
