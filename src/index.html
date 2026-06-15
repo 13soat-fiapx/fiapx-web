@@ -12,10 +12,10 @@
 <div class="shell" x-cloak>
 
   <div class="header">
-    <div class="logo-wrap">
+    <a class="logo-wrap" href="/" @click.prevent="_navigate('/')">
       <img src="logo.svg" alt="FIAP X" height="24">
       <span class="logo-sub">video processing</span>
-    </div>
+    </a>
     <div class="header-auth" x-show="token">
       <span class="user" x-text="userEmail"></span>
       <button class="btn btn-sm btn-danger" @click="logout()">logout</button>

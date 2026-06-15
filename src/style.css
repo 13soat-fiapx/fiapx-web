@@ -49,6 +49,8 @@ body {
   display: flex;
   align-items: center;
   gap: 2px;
+  text-decoration: none;
+  color: inherit;
 }
 .logo-sub {
   font-family: var(--mono);

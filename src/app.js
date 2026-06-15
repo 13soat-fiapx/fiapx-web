@@ -9,6 +9,20 @@ const CONFIG = {
  * @param {string} p
  * @returns {boolean}
  */
+const ROUTES = {
+  login:    '/login',
+  register: '/register',
+  status:   '/videos',
+  upload:   '/upload',
+};
+
+const ROUTES_BY_PATH = {
+  '/login':    'login',
+  '/register': 'register',
+  '/videos':   'status',
+  '/upload':   'upload',
+};
+
 function isStrongPassword(p) {
   const checks = [/[A-Z]/, /[a-z]/, /[0-9]/, /[^A-Za-z0-9]/];
   return p.length >= 8 && checks.filter(r => r.test(p)).length >= 3;
@@ -51,16 +65,45 @@ function app() {
     STATUS_LABELS: { queued: 'aguardando', processing: 'processando', done: 'concluído', error: 'erro' },
 
     init() {
-      const saved = sessionStorage.getItem('fiapx_token');
-      const savedEmail = sessionStorage.getItem('fiapx_email');
+      window.addEventListener('popstate', () => this._navigate(window.location.pathname));
+
+      const saved = localStorage.getItem('fiapx_token');
+      const savedEmail = localStorage.getItem('fiapx_email');
       if (saved) {
         this.token = saved;
         this.userEmail = savedEmail;
-        this.go('status');
       }
+
+      this._navigate(window.location.pathname);
     },
 
     go(page) {
+      const path = ROUTES[page] || '/login';
+      if (window.location.pathname !== path)
+        history.pushState(null, '', path);
+      this.page = page;
+      if (page === 'status') this.loadVideos();
+    },
+
+    /**
+     * Resolves a pathname to a page, applying auth guards.
+     * Called on init and on popstate (browser back/forward).
+     * @param {string} path
+     */
+    _navigate(path) {
+      const page = ROUTES_BY_PATH[path];
+
+      if (!page) {
+        this.go(this.token ? 'status' : 'login');
+        return;
+      }
+
+      const authRequired = ['status', 'upload'];
+      if (authRequired.includes(page) && !this.token) {
+        this.go('login');
+        return;
+      }
+
       this.page = page;
       if (page === 'status') this.loadVideos();
     },
@@ -69,7 +112,7 @@ function app() {
 
     /**
      * Authenticates via Auth0 Resource Owner Password Grant.
-     * On success, stores token in sessionStorage and navigates to status page.
+     * On success, stores token in localStorage and navigates to status page.
      */
     async login() {
       this.loginError = '';
@@ -100,8 +143,8 @@ function app() {
 
         this.token = data.access_token;
         this.userEmail = this.loginEmail;
-        sessionStorage.setItem('fiapx_token', this.token);
-        sessionStorage.setItem('fiapx_email', this.userEmail);
+        localStorage.setItem('fiapx_token', this.token);
+        localStorage.setItem('fiapx_email', this.userEmail);
         this.go('status');
       } catch (e) {
         this.loginError = 'erro de conexão: ' + e.message;
@@ -159,8 +202,8 @@ function app() {
     logout() {
       this.token = null;
       this.userEmail = null;
-      sessionStorage.removeItem('fiapx_token');
-      sessionStorage.removeItem('fiapx_email');
+      localStorage.removeItem('fiapx_token');
+      localStorage.removeItem('fiapx_email');
       this.go('login');
     },
 
