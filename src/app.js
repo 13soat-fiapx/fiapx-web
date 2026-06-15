@@ -5,6 +5,15 @@ const CONFIG = {
   API_BASE: window.__API_BASE__ || 'http://localhost:8080',
 };
 
+/**
+ * @param {string} p
+ * @returns {boolean}
+ */
+function isStrongPassword(p) {
+  const checks = [/[A-Z]/, /[a-z]/, /[0-9]/, /[^A-Za-z0-9]/];
+  return p.length >= 8 && checks.filter(r => r.test(p)).length >= 3;
+}
+
 function app() {
   return {
     page: 'login',
@@ -50,13 +59,22 @@ function app() {
 
     go(page) {
       this.page = page;
-      if (page === 'status')
-        this.loadVideos();
+      if (page === 'status') this.loadVideos();
     },
 
+    // #region auth
+
+    /**
+     * Authenticates via Auth0 Resource Owner Password Grant.
+     * On success, stores token in sessionStorage and navigates to status page.
+     */
     async login() {
       this.loginError = '';
-      if (!this.loginEmail || !this.loginPass) { this.loginError = 'preencha todos os campos'; return; }
+      if (!this.loginEmail || !this.loginPass) {
+        this.loginError = 'preencha todos os campos';
+        return;
+      }
+
       this.loginLoading = true;
       try {
         const res = await fetch(`https://${CONFIG.AUTH0_DOMAIN}/oauth/token`, {
@@ -72,7 +90,11 @@ function app() {
           }),
         });
         const data = await res.json();
-        if (!res.ok) { this.loginError = data.error_description || 'credenciais inválidas'; return; }
+        if (!res.ok) {
+          this.loginError = data.error_description || 'credenciais inválidas';
+          return;
+        }
+
         this.token = data.access_token;
         this.userEmail = this.loginEmail;
         sessionStorage.setItem('fiapx_token', this.token);
@@ -85,15 +107,27 @@ function app() {
       }
     },
 
+    /**
+     * Creates a new user via Auth0 /dbconnections/signup.
+     * Redirects to login after 2s on success.
+     */
     async register() {
       this.regError = '';
       this.regSuccess = '';
-      if (!this.regName || !this.regEmail || !this.regPass) { this.regError = 'preencha todos os campos'; return; }
-      if (this.regPass.length < 8) { this.regError = 'senha deve ter no mínimo 8 caracteres'; return; }
-      if (!this._strongPassword(this.regPass)) {
+
+      if (!this.regName || !this.regEmail || !this.regPass) {
+        this.regError = 'preencha todos os campos';
+        return;
+      }
+      if (this.regPass.length < 8) {
+        this.regError = 'senha deve ter no mínimo 8 caracteres';
+        return;
+      }
+      if (!isStrongPassword(this.regPass)) {
         this.regError = 'senha deve conter pelo menos 3 dos seguintes tipos de caracteres: letra maiúscula, letra minúscula, número e caractere especial';
         return;
       }
+
       try {
         const res = await fetch(`https://${CONFIG.AUTH0_DOMAIN}/dbconnections/signup`, {
           method: 'POST',
@@ -107,17 +141,16 @@ function app() {
           }),
         });
         const data = await res.json();
-        if (!res.ok) { this.regError = data.message || 'erro ao criar conta'; return; }
+        if (!res.ok) {
+          this.regError = data.message || 'erro ao criar conta';
+          return;
+        }
+
         this.regSuccess = 'conta criada — faça login para continuar';
         setTimeout(() => this.go('login'), 2000);
       } catch (e) {
         this.regError = 'erro de conexão: ' + e.message;
       }
-    },
-
-    _strongPassword(p) {
-      const checks = [/[A-Z]/, /[a-z]/, /[0-9]/, /[^A-Za-z0-9]/];
-      return p.length >= 8 && checks.filter(r => r.test(p)).length >= 3;
     },
 
     logout() {
@@ -127,6 +160,10 @@ function app() {
       sessionStorage.removeItem('fiapx_email');
       this.go('login');
     },
+
+    // #endregion
+
+    // #region upload
 
     onFileSelect(e) {
       const f = e.target.files[0];
@@ -157,8 +194,13 @@ function app() {
       this.uploadMsg = '';
     },
 
+    /**
+     * Uploads the selected video via XHR (required for upload progress events).
+     * Progress is capped at 80% until the server responds.
+     */
     upload() {
       if (!this.selectedFile) return;
+
       this.uploading = true;
       this.uploadDone = false;
       this.uploadProgress = 0;
@@ -167,12 +209,15 @@ function app() {
 
       const form = new FormData();
       form.append('video', this.selectedFile);
+
       const xhr = new XMLHttpRequest();
       xhr.open('POST', `${CONFIG.API_BASE}/videos`);
       xhr.setRequestHeader('Authorization', 'Bearer ' + this.token);
+
       xhr.upload.addEventListener('progress', e => {
         if (e.lengthComputable) this.uploadProgress = Math.round((e.loaded / e.total) * 80);
       });
+
       xhr.addEventListener('load', () => {
         this.uploadProgress = 100;
         this.uploadDone = true;
@@ -187,13 +232,22 @@ function app() {
           this.uploading = false;
         }
       });
+
       xhr.addEventListener('error', () => {
         this.uploadError = 'erro de conexão';
         this.uploading = false;
       });
+
       xhr.send(form);
     },
 
+    // #endregion
+
+    // #region videos
+
+    /**
+     * Fetches the authenticated user's video list from the API.
+     */
     async loadVideos() {
       this.videosLoading = true;
       this.videosError = '';
@@ -202,7 +256,10 @@ function app() {
         const res = await fetch(`${CONFIG.API_BASE}/videos`, {
           headers: { 'Authorization': 'Bearer ' + this.token },
         });
-        if (!res.ok) { this.videosError = 'erro ao carregar vídeos.'; return; }
+        if (!res.ok) {
+          this.videosError = 'erro ao carregar vídeos.';
+          return;
+        }
         this.videos = await res.json();
       } catch {
         this.videosError = 'erro de conexão.';
@@ -210,5 +267,7 @@ function app() {
         this.videosLoading = false;
       }
     },
+
+    // #endregion
   };
 }
