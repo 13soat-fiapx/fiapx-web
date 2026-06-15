@@ -16,6 +16,9 @@ function isStrongPassword(p) {
 
 function app() {
   return {
+    config: CONFIG,
+    curlCopied: null,
+
     page: 'login',
     token: null,
     userEmail: null,
@@ -266,6 +269,50 @@ function app() {
       } finally {
         this.videosLoading = false;
       }
+    },
+
+    // #endregion
+
+    // #region curl
+
+    /**
+     * Returns the masked curl string for display (token replaced with dots).
+     * @param {'login'|'register'|'upload'|'status'} page
+     * @returns {string}
+     */
+    curlDisplay(page) {
+      const mask = '••••••••••••';
+      if (page === 'login')
+        return `curl -s -X POST 'https://${CONFIG.AUTH0_DOMAIN}/oauth/token' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"grant_type":"password","username":"...","password":"...","audience":"${CONFIG.AUTH0_AUDIENCE}","client_id":"${CONFIG.AUTH0_CLIENT_ID}","scope":"openid profile email"}'`;
+      if (page === 'register')
+        return `curl -s -X POST 'https://${CONFIG.AUTH0_DOMAIN}/dbconnections/signup' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"client_id":"${CONFIG.AUTH0_CLIENT_ID}","connection":"Username-Password-Authentication","email":"...","password":"...","user_metadata":{"name":"..."}}'`;
+      if (page === 'upload')
+        return `curl -s -X POST '${CONFIG.API_BASE}/videos' \\\n  -H 'Authorization: Bearer ${mask}' \\\n  -F 'video=@arquivo.mp4'`;
+      if (page === 'status')
+        return `curl -s '${CONFIG.API_BASE}/videos' \\\n  -H 'Authorization: Bearer ${mask}'`;
+      return '';
+    },
+
+    /**
+     * Copies the real curl string (with actual token) to the clipboard.
+     * Highlights the icon briefly to confirm the copy.
+     * @param {'login'|'register'|'upload'|'status'} page
+     */
+    copyCurl(page) {
+      const tok = this.token || '{token}';
+      let text = '';
+      if (page === 'login')
+        text = `curl -s -X POST 'https://${CONFIG.AUTH0_DOMAIN}/oauth/token' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"grant_type":"password","username":"...","password":"...","audience":"${CONFIG.AUTH0_AUDIENCE}","client_id":"${CONFIG.AUTH0_CLIENT_ID}","scope":"openid profile email"}'`;
+      else if (page === 'register')
+        text = `curl -s -X POST 'https://${CONFIG.AUTH0_DOMAIN}/dbconnections/signup' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"client_id":"${CONFIG.AUTH0_CLIENT_ID}","connection":"Username-Password-Authentication","email":"...","password":"...","user_metadata":{"name":"..."}}'`;
+      else if (page === 'upload')
+        text = `curl -s -X POST '${CONFIG.API_BASE}/videos' \\\n  -H 'Authorization: Bearer ${tok}' \\\n  -F 'video=@arquivo.mp4'`;
+      else if (page === 'status')
+        text = `curl -s '${CONFIG.API_BASE}/videos' \\\n  -H 'Authorization: Bearer ${tok}'`;
+      if (!text) return;
+      navigator.clipboard.writeText(text);
+      this.curlCopied = page;
+      setTimeout(() => { this.curlCopied = null; }, 1500);
     },
 
     // #endregion

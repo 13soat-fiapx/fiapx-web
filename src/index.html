@@ -6,6 +6,7 @@
   <link rel="stylesheet" href="style.css">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
 </head>
 <body x-data="app()">
 <div class="shell" x-cloak>
@@ -48,10 +49,14 @@
       </div>
       <div class="divider"><span>endpoint</span></div>
       <div class="hint">
-        POST https://{tenant}.auth0.com/oauth/token<br>
+        POST https://<span x-text="config.AUTH0_DOMAIN"></span>/oauth/token<br>
         grant_type: password<br>
-        audience: {API_IDENTIFIER}<br>
-        client_id: {CLIENT_ID}
+        audience: <span x-text="config.AUTH0_AUDIENCE"></span><br>
+        client_id: <span x-text="config.AUTH0_CLIENT_ID"></span>
+      </div>
+      <div class="curl-block" @click="copyCurl('login')" title="copiar curl">
+        <i class="ph-duotone ph-copy-simple curl-icon" :class="{ copied: curlCopied === 'login' }"></i>
+        <pre x-text="curlDisplay('login')"></pre>
       </div>
     </div>
   </div>
@@ -78,9 +83,14 @@
       </div>
       <div class="divider"><span>endpoint</span></div>
       <div class="hint">
-        POST {API_BASE}/users<br>
-        body: {"{name, email, password}"}<br>
-        <span class="hl">→ chama Auth0 Management API no backend</span>
+        POST https://<span x-text="config.AUTH0_DOMAIN"></span>/dbconnections/signup<br>
+        client_id: <span x-text="config.AUTH0_CLIENT_ID"></span><br>
+        connection: Username-Password-Authentication<br>
+        body: {"{email, password, user_metadata: { name }}"}
+      </div>
+      <div class="curl-block" @click="copyCurl('register')" title="copiar curl">
+        <i class="ph-duotone ph-copy-simple curl-icon" :class="{ copied: curlCopied === 'register' }"></i>
+        <pre x-text="curlDisplay('register')"></pre>
       </div>
     </div>
   </div>
@@ -117,9 +127,13 @@
       </div>
       <div class="divider"><span>endpoint</span></div>
       <div class="hint">
-        POST {API_BASE}/videos<br>
-        Authorization: Bearer {token}<br>
+        POST <span x-text="config.API_BASE"></span>/videos<br>
+        Authorization: Bearer ••••••••••••<br>
         Content-Type: multipart/form-data
+      </div>
+      <div class="curl-block" @click="copyCurl('upload')" title="copiar curl">
+        <i class="ph-duotone ph-copy-simple curl-icon" :class="{ copied: curlCopied === 'upload' }"></i>
+        <pre x-text="curlDisplay('upload')"></pre>
       </div>
     </div>
   </div>
@@ -163,9 +177,13 @@
       </table>
       <div class="divider"><span>endpoint</span></div>
       <div class="hint">
-        GET {API_BASE}/videos<br>
-        Authorization: Bearer {token}<br>
+        GET <span x-text="config.API_BASE"></span>/videos<br>
+        Authorization: Bearer ••••••••••••<br>
         <span class="hl">→ retorna apenas vídeos do usuário autenticado</span>
+      </div>
+      <div class="curl-block" @click="copyCurl('status')" title="copiar curl">
+        <i class="ph-duotone ph-copy-simple curl-icon" :class="{ copied: curlCopied === 'status' }"></i>
+        <pre x-text="curlDisplay('status')"></pre>
       </div>
     </div>
   </div>
