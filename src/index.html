@@ -55,7 +55,8 @@
         client_id: <span x-text="config.AUTH0_CLIENT_ID"></span>
       </div>
       <div class="curl-block" @click="copyCurl('login')" title="copiar curl">
-        <i class="ph-duotone ph-copy-simple curl-icon" :class="{ copied: curlCopied === 'login' }"></i>
+        <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'login'" x-transition.opacity.duration.150ms></i>
+        <i class="ph-duotone ph-check curl-icon copied"  x-show="curlCopied === 'login'"  x-transition.opacity.duration.150ms></i>
         <pre x-text="curlDisplay('login')"></pre>
       </div>
     </div>
@@ -89,7 +90,8 @@
         body: {"{email, password, user_metadata: { name }}"}
       </div>
       <div class="curl-block" @click="copyCurl('register')" title="copiar curl">
-        <i class="ph-duotone ph-copy-simple curl-icon" :class="{ copied: curlCopied === 'register' }"></i>
+        <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'register'" x-transition.opacity.duration.150ms></i>
+        <i class="ph-duotone ph-check curl-icon copied"  x-show="curlCopied === 'register'"  x-transition.opacity.duration.150ms></i>
         <pre x-text="curlDisplay('register')"></pre>
       </div>
     </div>
@@ -132,7 +134,8 @@
         Content-Type: multipart/form-data
       </div>
       <div class="curl-block" @click="copyCurl('upload')" title="copiar curl">
-        <i class="ph-duotone ph-copy-simple curl-icon" :class="{ copied: curlCopied === 'upload' }"></i>
+        <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'upload'" x-transition.opacity.duration.150ms></i>
+        <i class="ph-duotone ph-check curl-icon copied"  x-show="curlCopied === 'upload'"  x-transition.opacity.duration.150ms></i>
         <pre x-text="curlDisplay('upload')"></pre>
       </div>
     </div>
@@ -182,7 +185,8 @@
         <span class="hl">→ retorna apenas vídeos do usuário autenticado</span>
       </div>
       <div class="curl-block" @click="copyCurl('status')" title="copiar curl">
-        <i class="ph-duotone ph-copy-simple curl-icon" :class="{ copied: curlCopied === 'status' }"></i>
+        <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'status'" x-transition.opacity.duration.150ms></i>
+        <i class="ph-duotone ph-check curl-icon copied"  x-show="curlCopied === 'status'"  x-transition.opacity.duration.150ms></i>
         <pre x-text="curlDisplay('status')"></pre>
       </div>
     </div>
