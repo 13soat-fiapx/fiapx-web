@@ -67,6 +67,19 @@ function app() {
     init() {
       window.addEventListener('popstate', () => this._navigate(window.location.pathname));
 
+      window.addEventListener('storage', e => {
+        if (e.key !== 'fiapx_token') return;
+        if (!e.newValue) {
+          this.token = null;
+          this.userEmail = null;
+          this.go('login');
+        } else {
+          this.token = e.newValue;
+          this.userEmail = localStorage.getItem('fiapx_email');
+          this.go('status');
+        }
+      });
+
       const saved = localStorage.getItem('fiapx_token');
       const savedEmail = localStorage.getItem('fiapx_email');
       if (saved) {

@@ -89,6 +89,7 @@ body {
 .tab {
   font-family: var(--font);
   font-size: 13px;
+  line-height: 1;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
