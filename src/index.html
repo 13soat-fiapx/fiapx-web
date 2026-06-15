@@ -5,121 +5,147 @@
   <title>FIAP X</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+  <script defer src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
 </head>
-<body>
-<div class="shell">
+<body x-data="app()">
+<div class="shell" x-cloak>
 
-  <!-- header: logo + email/logout quando autenticado -->
-  <div class="header" style="margin-bottom:0">
-    <div class="logo-wrap">
+  <div class="header">
+    <a class="logo-wrap" href="/" @click.prevent="_navigate('/')">
       <img src="logo.svg" alt="FIAP X" height="24">
       <span class="logo-sub">video processing</span>
-    </div>
-    <div class="header-auth" id="header-auth" style="display:none">
-      <span class="user" id="header-email"></span>
-      <button class="btn btn-sm btn-danger" onclick="doLogout()">logout</button>
+    </a>
+    <div class="header-auth" x-show="token">
+      <span class="user" x-text="userEmail"></span>
+      <button class="btn btn-sm btn-danger" @click="logout()"><i class="ph-duotone ph-sign-out"></i> logout</button>
     </div>
   </div>
 
-  <!-- tab bar: troca dinamicamente entre estado anon e autenticado -->
-  <div class="tabbar" id="tabbar">
-    <!-- preenchida por renderTabbar() -->
+  <div class="tabbar">
+    <div class="tabbar-left">
+      <button class="tab" :class="{ active: page === 'login' }"    @click="go('login')"    x-show="!token">login</button>
+      <button class="tab" :class="{ active: page === 'register' }" @click="go('register')" x-show="!token">cadastro</button>
+      <button class="tab" :class="{ active: page === 'status' }"   @click="go('status')"   x-show="token">vídeos</button>
+      <button class="tab" :class="{ active: page === 'upload' }"   @click="go('upload')"   x-show="token">upload</button>
+    </div>
   </div>
 
-  <!-- PAGINAS -->
-
-  <div id="page-login" class="page active">
+  <div x-show="page === 'login'">
     <div class="card">
       <div class="card-title">autenticação</div>
-      <div class="alert alert-err" id="login-err"></div>
+      <div class="alert alert-err" x-show="loginError" x-text="loginError"></div>
       <div class="field">
         <label>e-mail</label>
-        <input type="email" id="l-email" placeholder="usuario@email.com">
+        <input type="email" x-model="loginEmail" placeholder="usuario@email.com">
       </div>
       <div class="field">
         <label>senha</label>
-        <input type="password" id="l-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+        <input type="password" x-model="loginPass" @keydown.enter="login()" placeholder="••••••••">
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
-        <button class="btn btn-primary" onclick="doLogin()">entrar</button>
-        <span style="font-size:11px;color:var(--muted)" id="login-loading"></span>
+        <button class="btn btn-primary" @click="login()" :disabled="loginLoading"><i class="ph-duotone ph-sign-in"></i> entrar</button>
+        <span style="font-size:11px;color:var(--muted)" x-show="loginLoading">autenticando…</span>
       </div>
       <div class="divider"><span>endpoint</span></div>
       <div class="hint">
-        POST https://{tenant}.auth0.com/oauth/token<br>
+        POST https://<span x-text="config.AUTH0_DOMAIN"></span>/oauth/token<br>
         grant_type: password<br>
-        audience: {API_IDENTIFIER}<br>
-        client_id: {CLIENT_ID}
+        audience: <span x-text="config.AUTH0_AUDIENCE"></span><br>
+        client_id: <span x-text="config.AUTH0_CLIENT_ID"></span>
+      </div>
+      <div class="curl-block" role="button" tabindex="0" @click="copyCurl('login')" @keydown.enter.prevent="copyCurl('login')" @keydown.space.prevent="copyCurl('login')" title="copiar curl">
+        <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'login'" x-transition.opacity.duration.150ms></i>
+        <i class="ph-duotone ph-check curl-icon copied"  x-show="curlCopied === 'login'"  x-transition.opacity.duration.150ms></i>
+        <pre x-text="curlDisplay('login')"></pre>
       </div>
     </div>
   </div>
 
-  <div id="page-register" class="page">
+  <div x-show="page === 'register'">
     <div class="card">
       <div class="card-title">novo usuário</div>
-      <div class="alert alert-err" id="reg-err"></div>
-      <div class="alert alert-ok"  id="reg-ok"></div>
+      <div class="alert alert-err" x-show="regError"   x-text="regError"></div>
+      <div class="alert alert-ok"  x-show="regSuccess" x-text="regSuccess"></div>
       <div class="field">
         <label>nome</label>
-        <input type="text" id="r-name" placeholder="Nome completo">
+        <input type="text" x-model="regName" placeholder="Nome completo">
       </div>
       <div class="field">
         <label>e-mail</label>
-        <input type="email" id="r-email" placeholder="usuario@email.com">
+        <input type="email" x-model="regEmail" placeholder="usuario@email.com">
       </div>
       <div class="field">
         <label>senha</label>
-        <input type="password" id="r-pass" placeholder="min. 8 caracteres">
+        <input type="password" x-model="regPass" placeholder="min. 8 caracteres">
       </div>
       <div style="margin-top:4px">
-        <button class="btn btn-primary" onclick="doRegister()">criar conta</button>
+        <button class="btn btn-primary" @click="register()"><i class="ph-duotone ph-user-plus"></i> criar conta</button>
       </div>
       <div class="divider"><span>endpoint</span></div>
       <div class="hint">
-        POST {API_BASE}/users<br>
-        body: {"{name, email, password}"}<br>
-        <span class="hl">→ chama Auth0 Management API no backend</span>
+        POST https://<span x-text="config.AUTH0_DOMAIN"></span>/dbconnections/signup<br>
+        client_id: <span x-text="config.AUTH0_CLIENT_ID"></span><br>
+        connection: Username-Password-Authentication<br>
+        body: {"{email, password, user_metadata: { name }}"}
+      </div>
+      <div class="curl-block" role="button" tabindex="0" @click="copyCurl('register')" @keydown.enter.prevent="copyCurl('register')" @keydown.space.prevent="copyCurl('register')" title="copiar curl">
+        <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'register'" x-transition.opacity.duration.150ms></i>
+        <i class="ph-duotone ph-check curl-icon copied"  x-show="curlCopied === 'register'"  x-transition.opacity.duration.150ms></i>
+        <pre x-text="curlDisplay('register')"></pre>
       </div>
     </div>
   </div>
 
-  <div id="page-upload" class="page">
+  <div x-show="page === 'upload'">
     <div class="card">
       <div class="card-title">enviar vídeo</div>
-      <div class="alert alert-err" id="upload-err"></div>
-      <div class="alert alert-ok"  id="upload-ok"></div>
-      <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-        <input type="file" id="file-input" accept="video/*" onchange="onFileSelect(this)">
-        <div class="uz-icon">&#9654;</div>
+      <div class="alert alert-err" x-show="uploadError"   x-text="uploadError"></div>
+      <div class="alert alert-ok"  x-show="uploadSuccess" x-text="uploadSuccess"></div>
+      <div class="upload-zone"
+           :class="{ drag: dragging }"
+           @click="$refs.fileInput.click()"
+           @dragover.prevent="dragging = true"
+           @dragleave="dragging = false"
+           @drop.prevent="onDrop($event)">
+        <input type="file" x-ref="fileInput" accept="video/*" @change="onFileSelect($event)">
+        <div class="uz-icon"><i class="ph-duotone ph-cloud-arrow-up"></i></div>
         <p>clique ou arraste um arquivo de vídeo</p>
         <p style="font-size:10px;margin-top:4px">mp4, avi, mov, mkv — limite configurável</p>
-        <div class="filename" id="file-name"></div>
+        <div class="filename" x-text="fileName"></div>
       </div>
-      <div class="progress-wrap" id="prog-wrap">
+      <div class="progress-wrap" x-show="uploading">
         <div class="progress-label">
-          <span id="prog-label">enviando...</span>
-          <span id="prog-pct">0%</span>
+          <span x-text="uploadDone ? 'concluído' : 'enviando...'"></span>
+          <span x-text="uploadProgress + '%'"></span>
         </div>
-        <div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
+        <div class="progress-bar">
+          <div class="progress-fill" :style="{ width: uploadProgress + '%' }"></div>
+        </div>
       </div>
       <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
-        <button class="btn btn-primary" onclick="doUpload()" id="btn-upload" disabled>enviar</button>
-        <span style="font-size:11px;color:var(--muted)" id="up-msg"></span>
+        <button class="btn btn-primary" @click="upload()" :disabled="!selectedFile || uploading"><i class="ph-duotone ph-cloud-arrow-up"></i> enviar</button>
+        <span style="font-size:11px;color:var(--muted)" x-show="uploadMsg" x-text="uploadMsg"></span>
       </div>
       <div class="divider"><span>endpoint</span></div>
       <div class="hint">
-        POST {API_BASE}/videos<br>
-        Authorization: Bearer {token}<br>
+        POST <span x-text="config.API_BASE"></span>/videos<br>
+        Authorization: Bearer ••••••••••••<br>
         Content-Type: multipart/form-data
+      </div>
+      <div class="curl-block" role="button" tabindex="0" @click="copyCurl('upload')" @keydown.enter.prevent="copyCurl('upload')" @keydown.space.prevent="copyCurl('upload')" title="copiar curl">
+        <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'upload'" x-transition.opacity.duration.150ms></i>
+        <i class="ph-duotone ph-check curl-icon copied"  x-show="curlCopied === 'upload'"  x-transition.opacity.duration.150ms></i>
+        <pre x-text="curlDisplay('upload')"></pre>
       </div>
     </div>
   </div>
 
-  <div id="page-status" class="page">
+  <div x-show="page === 'status'">
     <div class="card">
       <div class="status-header">
         <div class="card-title">meus vídeos</div>
-        <button class="btn btn-sm" onclick="refreshStatus()">atualizar</button>
+        <button class="btn btn-sm" @click="loadVideos()"><i class="ph-duotone ph-arrow-clockwise"></i> atualizar</button>
       </div>
       <table class="table">
         <thead>
@@ -130,15 +156,38 @@
             <th></th>
           </tr>
         </thead>
-        <tbody id="videos-body">
-          <tr><td colspan="4" class="empty">carregando...</td></tr>
+        <tbody>
+          <tr x-show="videosLoading"><td colspan="4" class="empty">carregando...</td></tr>
+          <tr x-show="!videosLoading && videosError"><td colspan="4" class="empty" x-text="videosError"></td></tr>
+          <tr x-show="!videosLoading && !videosError && videos.length === 0"><td colspan="4" class="empty">nenhum vídeo encontrado.</td></tr>
+          <template x-for="v in videos" :key="v.name">
+            <tr>
+              <td class="mono" x-text="v.name"></td>
+              <td style="color:var(--muted);font-size:11px" x-text="v.created_at"></td>
+              <td>
+                <span class="badge" :class="'badge-' + v.status">
+                  <span class="dot"></span>
+                  <span x-text="STATUS_LABELS[v.status] || v.status"></span>
+                </span>
+              </td>
+              <td>
+                <a x-show="v.status === 'done' && v.zip_url" :href="v.zip_url" class="btn btn-sm" style="text-decoration:none"><i class="ph-duotone ph-download-simple"></i> download</a>
+                <button x-show="!(v.status === 'done' && v.zip_url)" class="btn btn-sm" disabled><i class="ph-duotone ph-download-simple"></i> download</button>
+              </td>
+            </tr>
+          </template>
         </tbody>
       </table>
       <div class="divider"><span>endpoint</span></div>
       <div class="hint">
-        GET {API_BASE}/videos<br>
-        Authorization: Bearer {token}<br>
+        GET <span x-text="config.API_BASE"></span>/videos<br>
+        Authorization: Bearer ••••••••••••<br>
         <span class="hl">→ retorna apenas vídeos do usuário autenticado</span>
+      </div>
+      <div class="curl-block" role="button" tabindex="0" @click="copyCurl('status')" @keydown.enter.prevent="copyCurl('status')" @keydown.space.prevent="copyCurl('status')" title="copiar curl">
+        <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'status'" x-transition.opacity.duration.150ms></i>
+        <i class="ph-duotone ph-check curl-icon copied"  x-show="curlCopied === 'status'"  x-transition.opacity.duration.150ms></i>
+        <pre x-text="curlDisplay('status')"></pre>
       </div>
     </div>
   </div>

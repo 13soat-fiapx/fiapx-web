@@ -4,6 +4,7 @@ Interface web para o sistema FIAP X de processamento de vídeos.
 
 ## Tecnologias
 
+- [Alpine.js](https://alpinejs.dev/)
 - [Auth0](https://auth0.com/)
 - [Nginx](https://nginx.org/)
 
@@ -37,6 +38,12 @@ docker compose up -d --build
 ```
 
 Acesse a interface em [http://localhost:8080](http://localhost:8080).
+
+## Autenticação
+
+O login é feito via Auth0 com Resource Owner Password Grant: o usuário informa e-mail e senha na própria interface, que os envia diretamente para a API do Auth0 e recebe um JWT em troca.
+
+Existem alternativas mais seguras (como o fluxo Authorization Code com PKCE), mas o contexto acadêmico com credenciais AWS Academy temporárias não justifica a complexidade extra.
 
 ## Links úteis
 
