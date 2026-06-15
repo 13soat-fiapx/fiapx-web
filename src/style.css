@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
+[x-cloak]{display:none !important}
 :root{
   --font:'IBM Plex Sans',sans-serif;
   --mono:'IBM Plex Mono',monospace;
@@ -108,7 +109,6 @@ input:focus{border-color:var(--accent-border)}
 .hint{font-family:var(--mono);font-size:12px;color:var(--muted);line-height:1.9}
 .hint .hl{color:var(--accent)}
 .empty{text-align:center;padding:32px;color:var(--muted);font-size:12px}
-.page{display:none}.page.active{display:block}
 .row{display:flex;gap:10px}.row .field{flex:1}
 .status-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
 .status-header .card-title{margin-bottom:0}

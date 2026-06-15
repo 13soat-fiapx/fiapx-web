@@ -4,6 +4,7 @@ Interface web para o sistema FIAP X de processamento de vídeos.
 
 ## Tecnologias
 
+- [Alpine.js](https://alpinejs.dev/)
 - [Auth0](https://auth0.com/)
 - [Nginx](https://nginx.org/)
 
