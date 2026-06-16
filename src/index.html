@@ -57,7 +57,7 @@
       <div class="curl-block" role="button" tabindex="0" @click="copyCurl('login')" @keydown.enter.prevent="copyCurl('login')" @keydown.space.prevent="copyCurl('login')" title="copiar curl">
         <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'login'" x-transition.opacity.duration.150ms></i>
         <i class="ph-duotone ph-check curl-icon copied"  x-show="curlCopied === 'login'"  x-transition.opacity.duration.150ms></i>
-        <pre x-text="curlDisplay('login')"></pre>
+        <div class="curl-body"><pre x-text="curlDisplay('login')"></pre></div>
       </div>
     </div>
   </div>
@@ -92,7 +92,7 @@
       <div class="curl-block" role="button" tabindex="0" @click="copyCurl('register')" @keydown.enter.prevent="copyCurl('register')" @keydown.space.prevent="copyCurl('register')" title="copiar curl">
         <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'register'" x-transition.opacity.duration.150ms></i>
         <i class="ph-duotone ph-check curl-icon copied"  x-show="curlCopied === 'register'"  x-transition.opacity.duration.150ms></i>
-        <pre x-text="curlDisplay('register')"></pre>
+        <div class="curl-body"><pre x-text="curlDisplay('register')"></pre></div>
       </div>
     </div>
   </div>
@@ -136,7 +136,7 @@
       <div class="curl-block" role="button" tabindex="0" @click="copyCurl('upload')" @keydown.enter.prevent="copyCurl('upload')" @keydown.space.prevent="copyCurl('upload')" title="copiar curl">
         <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'upload'" x-transition.opacity.duration.150ms></i>
         <i class="ph-duotone ph-check curl-icon copied"  x-show="curlCopied === 'upload'"  x-transition.opacity.duration.150ms></i>
-        <pre x-text="curlDisplay('upload')"></pre>
+        <div class="curl-body"><pre x-text="curlDisplay('upload')"></pre></div>
       </div>
     </div>
   </div>
@@ -187,7 +187,7 @@
       <div class="curl-block" role="button" tabindex="0" @click="copyCurl('status')" @keydown.enter.prevent="copyCurl('status')" @keydown.space.prevent="copyCurl('status')" title="copiar curl">
         <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'status'" x-transition.opacity.duration.150ms></i>
         <i class="ph-duotone ph-check curl-icon copied"  x-show="curlCopied === 'status'"  x-transition.opacity.duration.150ms></i>
-        <pre x-text="curlDisplay('status')"></pre>
+        <div class="curl-body"><pre x-text="curlDisplay('status')"></pre></div>
       </div>
     </div>
   </div>
