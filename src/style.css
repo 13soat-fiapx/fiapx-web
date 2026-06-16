@@ -335,18 +335,21 @@ input:focus { border-color: var(--accent-border); }
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 9px 36px 9px 12px;
   font-family: var(--mono);
   font-size: 12px;
   color: var(--muted);
   line-height: 1.9;
   cursor: pointer;
   transition: border-color .15s;
-  overflow-x: auto;
   margin-top: 10px;
 }
 .curl-block:hover { border-color: var(--border2); }
 .curl-block pre { margin: 0; white-space: pre; }
+
+.curl-body {
+  padding: 9px 36px 9px 12px;
+  overflow-x: auto;
+}
 
 .curl-icon {
   position: absolute;
