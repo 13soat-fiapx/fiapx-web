@@ -34,7 +34,7 @@ runs:
       shell: bash
       run: npx --yes @asyncapi/cli generate fromTemplate ${{ inputs.spec }} @asyncapi/html-template --output ./out
 
-    - uses: actions/upload-artifact@v5
+    - uses: actions/upload-artifact@v6
       with:
         name: ${{ inputs.artifact }}
         path: out/
