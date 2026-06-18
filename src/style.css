@@ -377,3 +377,53 @@ input:focus { border-color: var(--accent-border); }
 .token-text { -webkit-text-security: disc; white-space: nowrap; }
 
 /* #endregion */
+
+/* #region docs */
+
+.docs-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+.docs-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  text-decoration: none;
+  color: var(--text);
+  transition: border-color .15s, background .15s;
+}
+.docs-card:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-dim);
+}
+.docs-card-icon {
+  font-size: 28px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.docs-card-body { flex: 1; min-width: 0; }
+.docs-card-title {
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.docs-card-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.docs-card-ext {
+  font-size: 16px;
+  color: var(--muted);
+  flex-shrink: 0;
+  transition: color .15s;
+}
+.docs-card:hover .docs-card-ext { color: var(--accent); }
+
+/* #endregion */
