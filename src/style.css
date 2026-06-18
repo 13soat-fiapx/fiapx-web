@@ -361,3 +361,19 @@ input:focus { border-color: var(--accent-border); }
 .curl-block:hover .curl-icon, .curl-icon.copied { color: var(--accent); }
 
 /* #endregion */
+
+/* #region token */
+
+.token-fade {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 100px;
+  background: linear-gradient(to right, transparent, var(--surface2) calc(100% - 36px));
+  pointer-events: none;
+}
+.token-body { overflow: hidden; }
+.token-text { -webkit-text-security: disc; white-space: nowrap; }
+
+/* #endregion */
