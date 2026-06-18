@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: lts/*
       - run: npx --yes @redocly/cli lint contracts/openapi.yaml
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: lts/*
       - run: npx --yes @asyncapi/cli validate contracts/asyncapi.yaml
@@ -63,13 +63,13 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Download OpenAPI docs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: contracts-openapi
           path: dist/contracts/openapi
 
       - name: Download AsyncAPI docs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: contracts-asyncapi
           path: dist/contracts/asyncapi
