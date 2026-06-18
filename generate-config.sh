@@ -9,4 +9,6 @@ window.__AUTH0_AUDIENCE__  = '${AUDIENCE}';
 window.__API_BASE__        = '${API_BASE}';
 EOF
 
-[ "$#" -gt 0 ] && exec "$@"
+if [ "$#" -gt 0 ]; then
+    exec "$@"
+fi
