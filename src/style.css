@@ -81,10 +81,8 @@ body {
 .tabbar-left { display: flex; align-items: stretch; gap: 0; }
 .tabbar-right {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: stretch;
   margin-left: auto;
-  padding-bottom: 1px;
 }
 .tab {
   font-family: var(--font);
@@ -102,6 +100,7 @@ body {
 }
 .tab:hover { color: var(--text); }
 .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-icon { padding-left: 12px; padding-right: 12px; font-size: 15px; }
 
 /* #endregion */
 

@@ -29,6 +29,9 @@
       <button class="tab" :class="{ active: page === 'status' }"   @click="go('status')"   x-show="token">vídeos</button>
       <button class="tab" :class="{ active: page === 'upload' }"   @click="go('upload')"   x-show="token">upload</button>
     </div>
+    <div class="tabbar-right">
+      <button class="tab tab-icon" :class="{ active: page === 'settings' }" @click="go('settings')" title="configurações"><i class="ph-duotone ph-gear"></i></button>
+    </div>
   </div>
 
   <div x-show="page === 'login'">
@@ -188,6 +191,22 @@
         <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'status'" x-transition.opacity.duration.150ms></i>
         <i class="ph-duotone ph-check curl-icon copied"  x-show="curlCopied === 'status'"  x-transition.opacity.duration.150ms></i>
         <div class="curl-body"><pre x-text="curlDisplay('status')"></pre></div>
+      </div>
+    </div>
+  </div>
+
+
+  <div x-show="page === 'settings'">
+    <div class="card">
+      <div class="card-title">configurações</div>
+      <div class="alert alert-ok" x-show="settingsSaved">configurações salvas.</div>
+      <div class="field">
+        <label>URL base da API</label>
+        <input type="text" x-model="settingsApiBase" placeholder="http://localhost:8080" @keydown.enter="saveSettings()">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+        <button class="btn btn-primary" @click="saveSettings()"><i class="ph-duotone ph-floppy-disk"></i> salvar</button>
+        <button class="btn" @click="resetSettings()"><i class="ph-duotone ph-arrow-counter-clockwise"></i> restaurar padrões</button>
       </div>
     </div>
   </div>

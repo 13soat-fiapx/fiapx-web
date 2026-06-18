@@ -10,6 +10,7 @@ const ROUTES = {
   register: '/register',
   status:   '/videos',
   upload:   '/upload',
+  settings: '/settings',
 };
 
 const ROUTES_BY_PATH = {
@@ -17,6 +18,7 @@ const ROUTES_BY_PATH = {
   '/register': 'register',
   '/videos':   'status',
   '/upload':   'upload',
+  '/settings': 'settings',
 };
 
 function isStrongPassword(p) {
@@ -58,6 +60,9 @@ function app() {
     videosLoading: false,
     videosError: '',
 
+    settingsApiBase: '',
+    settingsSaved: false,
+
     STATUS_LABELS: { queued: 'aguardando', processing: 'processando', done: 'concluído', error: 'erro' },
 
     init() {
@@ -83,6 +88,10 @@ function app() {
         this.userEmail = savedEmail;
       }
 
+      const savedApiBase = localStorage.getItem('fiapx_api_base');
+      if (savedApiBase) this.config.API_BASE = savedApiBase;
+      this.settingsApiBase = this.config.API_BASE;
+
       this._navigate(window.location.pathname);
     },
 
@@ -107,7 +116,7 @@ function app() {
         return;
       }
 
-      const authRequired = ['status', 'upload'];
+      const authRequired = ['status', 'upload', 'settings'];
       if (authRequired.includes(page) && !this.token) {
         this.go('login');
         return;
@@ -366,6 +375,28 @@ function app() {
         this.curlCopied = page;
         setTimeout(() => { this.curlCopied = null; }, 1500);
       }).catch(() => {});
+    },
+
+    // #endregion
+
+    // #region settings
+
+    saveSettings() {
+      const v = this.settingsApiBase.trim();
+      if (!v) return;
+      this.config.API_BASE = v;
+      localStorage.setItem('fiapx_api_base', v);
+      this.settingsSaved = true;
+      setTimeout(() => { this.settingsSaved = false; }, 2000);
+    },
+
+    resetSettings() {
+      const defaultBase = window.__API_BASE__ || 'http://localhost:8080';
+      this.settingsApiBase = defaultBase;
+      this.config.API_BASE = defaultBase;
+      localStorage.removeItem('fiapx_api_base');
+      this.settingsSaved = true;
+      setTimeout(() => { this.settingsSaved = false; }, 2000);
     },
 
     // #endregion
