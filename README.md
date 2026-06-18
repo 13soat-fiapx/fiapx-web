@@ -51,9 +51,10 @@ Existem alternativas mais seguras (como o fluxo Authorization Code com PKCE), ma
 
 Os contratos da API REST e de mensageria ficam em `contracts/`. A documentação HTML é gerada automaticamente durante o build e servida pelo Nginx nos caminhos `/contracts/openapi/` e `/contracts/asyncapi/`.
 
-Consulte [contracts/README.md](./contracts/README.md) para instruções de edição, validação e geração.
+Consulte [Contratos](./contracts/README.md) para instruções de edição, validação e geração.
 
 ## Links úteis
 
 - [Auth0 Dashboard](https://manage.auth0.com)
+- [Interface web](https://d2nyagk7gn75jo.cloudfront.net) (hospedada em conta AWS com créditos temporários, pode não estar disponível)
 - [Nginx - documentação oficial](https://nginx.org/en/docs/)
