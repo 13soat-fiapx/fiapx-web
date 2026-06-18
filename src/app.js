@@ -62,6 +62,7 @@ function app() {
 
     settingsApiBase: '',
     settingsSaved: false,
+    tokenCopied: false,
 
     STATUS_LABELS: { queued: 'aguardando', processing: 'processando', done: 'concluído', error: 'erro' },
 
@@ -348,9 +349,9 @@ function app() {
       if (page === 'register')
         return `curl -s -X POST 'https://${CONFIG.AUTH0_DOMAIN}/dbconnections/signup' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"client_id":"${CONFIG.AUTH0_CLIENT_ID}","connection":"Username-Password-Authentication","email":"...","password":"...","user_metadata":{"name":"..."}}'`;
       if (page === 'upload')
-        return `curl -s -X POST '${CONFIG.API_BASE}/videos' \\\n  -H 'Authorization: Bearer ${mask}' \\\n  -F 'video=@arquivo.mp4'`;
+        return `curl -s -X POST '${this.config.API_BASE}/videos' \\\n  -H 'Authorization: Bearer ${mask}' \\\n  -F 'video=@arquivo.mp4'`;
       if (page === 'status')
-        return `curl -s '${CONFIG.API_BASE}/videos' \\\n  -H 'Authorization: Bearer ${mask}'`;
+        return `curl -s '${this.config.API_BASE}/videos' \\\n  -H 'Authorization: Bearer ${mask}'`;
       return '';
     },
 
@@ -367,9 +368,9 @@ function app() {
       else if (page === 'register')
         text = `curl -s -X POST 'https://${CONFIG.AUTH0_DOMAIN}/dbconnections/signup' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"client_id":"${CONFIG.AUTH0_CLIENT_ID}","connection":"Username-Password-Authentication","email":"...","password":"...","user_metadata":{"name":"..."}}'`;
       else if (page === 'upload')
-        text = `curl -s -X POST '${CONFIG.API_BASE}/videos' \\\n  -H 'Authorization: Bearer ${tok}' \\\n  -F 'video=@arquivo.mp4'`;
+        text = `curl -s -X POST '${this.config.API_BASE}/videos' \\\n  -H 'Authorization: Bearer ${tok}' \\\n  -F 'video=@arquivo.mp4'`;
       else if (page === 'status')
-        text = `curl -s '${CONFIG.API_BASE}/videos' \\\n  -H 'Authorization: Bearer ${tok}'`;
+        text = `curl -s '${this.config.API_BASE}/videos' \\\n  -H 'Authorization: Bearer ${tok}'`;
       if (!text) return;
       navigator.clipboard.writeText(text).then(() => {
         this.curlCopied = page;
@@ -380,6 +381,14 @@ function app() {
     // #endregion
 
     // #region settings
+
+    copyToken() {
+      if (!this.token) return;
+      navigator.clipboard.writeText(this.token).then(() => {
+        this.tokenCopied = true;
+        setTimeout(() => { this.tokenCopied = false; }, 1500);
+      }).catch(() => {});
+    },
 
     saveSettings() {
       const v = this.settingsApiBase.trim();
