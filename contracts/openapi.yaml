@@ -1,0 +1,688 @@
+openapi: 3.1.1
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+info:
+  title: FIAP X - Media Processing API
+  version: 1.0.0
+  license:
+    name: Academic Use
+    identifier: LicenseRef-Academic-Use
+  summary: Contrato REST v1 para cadastro, upload direto no S3, processamento assíncrono e download do resultado.
+  description: |
+    Especificação Contract First para o fluxo de processamento de vídeos do FIAP X.
+
+    Padrões principais:
+    - RESTful com versionamento em URI (`/v1`)
+    - Correlação distribuída via W3C Trace Context + OpenTelemetry
+    - Upload direto no S3 por URL assinada
+    - Processamento assíncrono com `202 Accepted` + `Location` + `Retry-After`
+    - Redirecionamento `303 See Other` quando o resultado final estiver pronto
+    - Hypermedia (_links) nas respostas de domínio
+    - Erros no padrão `application/problem+json` (RFC 9457)
+servers:
+  - url: https://api.fiapx.com
+    description: Produção
+  - url: https://staging.api.fiapx.com
+    description: Homologação
+  - url: http://localhost:8080
+    description: Local
+security:
+  - bearerAuth: []
+tags:
+  - name: Processing Jobs
+    description: Jobs assíncronos que extraem frames e produzem artefatos ZIP.
+  - name: Files
+    description: Artefatos finais e redirecionamentos para download assinado.
+paths:
+  /v1/processing-jobs:
+    get:
+      tags: [Processing Jobs]
+      summary: Lista os processing jobs do usuário autenticado
+      operationId: listProcessingJobs
+      parameters:
+        - $ref: '#/components/parameters/TraceparentHeader'
+        - $ref: '#/components/parameters/TracestateHeader'
+        - $ref: '#/components/parameters/BaggageHeader'
+        - name: status
+          in: query
+          description: Filtra por status do processamento.
+          schema:
+            $ref: '#/components/schemas/ProcessingStatus'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Lista paginada.
+          headers:
+            traceparent:
+              $ref: '#/components/headers/TraceparentResponseHeader'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, page, size, total, _links]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AsyncProcessingJobStatus'
+                  page:
+                    type: integer
+                  size:
+                    type: integer
+                  total:
+                    type: integer
+                  _links:
+                    $ref: '#/components/schemas/Links'
+        '401':
+          $ref: '#/components/responses/UnauthorizedProblem'
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorProblem'
+
+    post:
+      tags: [Processing Jobs]
+      summary: Cadastra um processing job e retorna uma URL assinada de upload
+      description: |
+        Cria o registro do processamento em `upload_pending`, reserva a chave S3 em `videos/{processingJobId}/`
+        e retorna uma URL assinada para o cliente enviar o vídeo diretamente ao bucket.
+      operationId: createProcessingJob
+      parameters:
+        - $ref: '#/components/parameters/TraceparentHeader'
+        - $ref: '#/components/parameters/TracestateHeader'
+        - $ref: '#/components/parameters/BaggageHeader'
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProcessingJobRequest'
+      responses:
+        '201':
+          description: Processing job criado; o upload deve ser feito diretamente no S3 usando a URL assinada.
+          headers:
+            Location:
+              $ref: '#/components/headers/LocationHeader'
+            traceparent:
+              $ref: '#/components/headers/TraceparentResponseHeader'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessingJobCreated'
+        '400':
+          $ref: '#/components/responses/BadRequestProblem'
+        '401':
+          $ref: '#/components/responses/UnauthorizedProblem'
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+        '409':
+          $ref: '#/components/responses/ConflictProblem'
+        '413':
+          $ref: '#/components/responses/PayloadTooLargeProblem'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeProblem'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityProblem'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsProblem'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorProblem'
+
+  /v1/processing-jobs/{processingJobId}/upload-completion:
+    post:
+      tags: [Processing Jobs]
+      summary: Confirma que o upload direto no S3 foi concluído
+      description: |
+        Após confirmar o objeto no S3, a API atualiza o status para `queued`, persiste o progresso no DynamoDB
+        e publica o evento `VideoProcessingRequested` na fila `video-processing-requested`.
+      operationId: completeProcessingJobUpload
+      parameters:
+        - $ref: '#/components/parameters/ProcessingJobIdPath'
+        - $ref: '#/components/parameters/TraceparentHeader'
+        - $ref: '#/components/parameters/TracestateHeader'
+        - $ref: '#/components/parameters/BaggageHeader'
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadCompletionRequest'
+      responses:
+        '202':
+          description: Upload confirmado; processing job enfileirado para processamento.
+          headers:
+            Location:
+              $ref: '#/components/headers/LocationHeader'
+            Retry-After:
+              $ref: '#/components/headers/RetryAfterHeader'
+            traceparent:
+              $ref: '#/components/headers/TraceparentResponseHeader'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncProcessingJobStatus'
+        '400':
+          $ref: '#/components/responses/BadRequestProblem'
+        '401':
+          $ref: '#/components/responses/UnauthorizedProblem'
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
+        '409':
+          $ref: '#/components/responses/ConflictProblem'
+        '413':
+          $ref: '#/components/responses/PayloadTooLargeProblem'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaTypeProblem'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityProblem'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorProblem'
+
+  /v1/processing-jobs/{processingJobId}:
+    get:
+      tags: [Processing Jobs]
+      summary: Consulta o status do processing job
+      operationId: getProcessingJobStatus
+      parameters:
+        - $ref: '#/components/parameters/ProcessingJobIdPath'
+        - $ref: '#/components/parameters/TraceparentHeader'
+        - $ref: '#/components/parameters/TracestateHeader'
+        - $ref: '#/components/parameters/BaggageHeader'
+      responses:
+        '200':
+          description: Status atual do processing job.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfterHeader'
+            Cache-Control:
+              description: Respostas de status em andamento não devem ser cacheadas.
+              schema:
+                type: string
+                example: no-store
+            traceparent:
+              $ref: '#/components/headers/TraceparentResponseHeader'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncProcessingJobStatus'
+        '303':
+          description: Processamento concluído com sucesso. Siga o `Location` para o recurso final.
+          headers:
+            Location:
+              $ref: '#/components/headers/LocationHeader'
+            Retry-After:
+              $ref: '#/components/headers/RetryAfterHeader'
+            traceparent:
+              $ref: '#/components/headers/TraceparentResponseHeader'
+        '401':
+          $ref: '#/components/responses/UnauthorizedProblem'
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsProblem'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorProblem'
+
+  /v1/files/{fileId}:
+    get:
+      tags: [Files]
+      summary: Retorna os metadados do artefato final
+      operationId: getFileMetadata
+      parameters:
+        - $ref: '#/components/parameters/FileIdPath'
+        - $ref: '#/components/parameters/TraceparentHeader'
+        - $ref: '#/components/parameters/TracestateHeader'
+        - $ref: '#/components/parameters/BaggageHeader'
+      responses:
+        '200':
+          description: Metadados do arquivo final.
+          headers:
+            Cache-Control:
+              description: Cache privado para metadados imutáveis de resultado.
+              schema:
+                type: string
+                example: private, max-age=60
+            traceparent:
+              $ref: '#/components/headers/TraceparentResponseHeader'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResult'
+        '401':
+          $ref: '#/components/responses/UnauthorizedProblem'
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorProblem'
+
+  /v1/files/{fileId}/content:
+    get:
+      tags: [Files]
+      summary: Redireciona para a URL assinada de download
+      operationId: downloadFile
+      parameters:
+        - $ref: '#/components/parameters/FileIdPath'
+        - $ref: '#/components/parameters/TraceparentHeader'
+        - $ref: '#/components/parameters/TracestateHeader'
+        - $ref: '#/components/parameters/BaggageHeader'
+      responses:
+        '303':
+          description: Download indireto por URL assinada.
+          headers:
+            Location:
+              $ref: '#/components/headers/LocationHeader'
+            Cache-Control:
+              description: Cache de redirecionamento curto.
+              schema:
+                type: string
+                example: private, max-age=30
+            traceparent:
+              $ref: '#/components/headers/TraceparentResponseHeader'
+        '401':
+          $ref: '#/components/responses/UnauthorizedProblem'
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+        '404':
+          $ref: '#/components/responses/NotFoundProblem'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorProblem'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    ProcessingJobIdPath:
+      name: processingJobId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    FileIdPath:
+      name: fileId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TraceparentHeader:
+      name: traceparent
+      in: header
+      required: false
+      description: Header de contexto distribuído (W3C Trace Context). O trace-id é o identificador de correlação.
+      schema:
+        type: string
+    TracestateHeader:
+      name: tracestate
+      in: header
+      required: false
+      schema:
+        type: string
+    BaggageHeader:
+      name: baggage
+      in: header
+      required: false
+      schema:
+        type: string
+    IdempotencyKeyHeader:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Chave de idempotência para evitar submissões duplicadas.
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+
+  headers:
+    LocationHeader:
+      description: URI do recurso relacionado (status, resultado ou download).
+      schema:
+        type: string
+        format: uri-reference
+    RetryAfterHeader:
+      description: Tempo em segundos para próxima tentativa.
+      schema:
+        type: integer
+        minimum: 0
+    TraceparentResponseHeader:
+      description: Contexto distribuído propagado/gerado pelo servidor. O trace-id é o identificador de correlação.
+      schema:
+        type: string
+  responses:
+    BadRequestProblem:
+      description: Requisição inválida
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    UnauthorizedProblem:
+      description: Token ausente ou inválido
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    ForbiddenProblem:
+      description: Sem permissão para o recurso
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    NotFoundProblem:
+      description: Recurso não encontrado
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    ConflictProblem:
+      description: Conflito de estado ou duplicidade
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    PayloadTooLargeProblem:
+      description: Tamanho de payload acima do limite
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    UnsupportedMediaTypeProblem:
+      description: Tipo de mídia não suportado
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    UnprocessableEntityProblem:
+      description: Conteúdo semanticamente inválido
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    TooManyRequestsProblem:
+      description: Limite de taxa excedido
+      headers:
+        Retry-After:
+          $ref: '#/components/headers/RetryAfterHeader'
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+    InternalServerErrorProblem:
+      description: Erro inesperado
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetails'
+
+  schemas:
+    ProcessingStatus:
+      type: string
+      enum: [upload_pending, queued, processing, succeeded, failed]
+
+    MessageSeverity:
+      type: string
+      enum: [info, warning, error]
+
+    ProcessingMessage:
+      type: object
+      additionalProperties: false
+      required: [code, message, severity]
+      properties:
+        code:
+          type: string
+          description: Identificador sistêmico da mensagem.
+          example: PROC-0001
+        message:
+          type: string
+          example: Processamento recebido e enfileirado.
+        severity:
+          $ref: '#/components/schemas/MessageSeverity'
+
+    Link:
+      type: object
+      additionalProperties: false
+      required: [href]
+      properties:
+        href:
+          type: string
+          format: uri-reference
+        method:
+          type: string
+          enum: [GET, POST, PUT, PATCH, DELETE]
+          default: GET
+        title:
+          type: string
+        type:
+          type: string
+
+    Links:
+      type: object
+      additionalProperties:
+        $ref: '#/components/schemas/Link'
+
+    S3ObjectReference:
+      type: object
+      additionalProperties: false
+      required: [bucket, key]
+      properties:
+        bucket:
+          type: string
+          example: fiapx-media
+        key:
+          type: string
+          description: Chave do objeto no S3.
+          example: videos/8f160f70-b26b-4eb2-8ff9-c69b4f8d2e0e/original.mp4
+        region:
+          type: string
+          default: us-east-1
+
+    RequestedFile:
+      type: object
+      additionalProperties: false
+      required: [originalFileName, contentType, sizeBytes]
+      properties:
+        originalFileName:
+          type: string
+          example: video.mp4
+        contentType:
+          type: string
+          description: MIME type do vídeo que será enviado ao S3.
+          example: video/mp4
+        sizeBytes:
+          type: integer
+          minimum: 1
+          example: 15434877
+        checksum:
+          type: string
+          description: Checksum opcional informado pelo cliente.
+
+    CreateProcessingJobRequest:
+      type: object
+      additionalProperties: false
+      required: [inputFile]
+      properties:
+        inputFile:
+          $ref: '#/components/schemas/RequestedFile'
+        description:
+          type: string
+          maxLength: 200
+        author:
+          type: string
+          maxLength: 120
+        clientReference:
+          type: string
+          maxLength: 64
+          description: Identificador de negócio enviado pelo cliente.
+
+    PresignedUpload:
+      type: object
+      additionalProperties: false
+      required: [method, url, expiresAt, object]
+      properties:
+        method:
+          type: string
+          enum: [PUT]
+          default: PUT
+        url:
+          type: string
+          format: uri
+          description: URL assinada para upload direto no S3.
+        expiresAt:
+          type: string
+          format: date-time
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Headers que o cliente deve enviar no upload para o S3.
+        object:
+          $ref: '#/components/schemas/S3ObjectReference'
+
+    ProcessingJobCreated:
+      type: object
+      additionalProperties: false
+      required: [id, status, inputFile, upload, messages, _links]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [upload_pending]
+        inputFile:
+          $ref: '#/components/schemas/S3ObjectReference'
+        upload:
+          $ref: '#/components/schemas/PresignedUpload'
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProcessingMessage'
+        createdAt:
+          type: string
+          format: date-time
+        _links:
+          $ref: '#/components/schemas/Links'
+
+    UploadCompletionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        sizeBytes:
+          type: integer
+          minimum: 1
+          description: Tamanho observado pelo cliente após o upload.
+        checksum:
+          type: string
+          description: Checksum observado pelo cliente após o upload.
+
+    AsyncProcessingJobStatus:
+      type: object
+      additionalProperties: false
+      required: [id, status, messages, _links]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/ProcessingStatus'
+        estimatedCompletionTime:
+          type: string
+          format: date-time
+          description: Time to completion estimado para nova consulta.
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProcessingMessage'
+        inputFile:
+          $ref: '#/components/schemas/S3ObjectReference'
+        outputPrefix:
+          type: string
+          example: frames/8f160f70-b26b-4eb2-8ff9-c69b4f8d2e0e/
+        resultFile:
+          $ref: '#/components/schemas/S3ObjectReference'
+        progressPercentage:
+          type: number
+          minimum: 0
+          maximum: 100
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        _links:
+          $ref: '#/components/schemas/Links'
+
+    FileResult:
+      type: object
+      additionalProperties: false
+      required: [id, fileName, contentType, sizeBytes, checksum, object, expiresAt, _links]
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+          example: frames.zip
+        contentType:
+          type: string
+          example: application/zip
+        sizeBytes:
+          type: integer
+          minimum: 0
+        checksum:
+          type: string
+          description: Checksum do artefato final (ex. sha-256 em hex).
+        object:
+          $ref: '#/components/schemas/S3ObjectReference'
+        expiresAt:
+          type: string
+          format: date-time
+          description: Expiração da URL assinada de download.
+        _links:
+          $ref: '#/components/schemas/Links'
+
+    ProblemDetails:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference
+        traceId:
+          type: string
+          description: Trace-id correlacionável com logs/distributed tracing.
+
+
