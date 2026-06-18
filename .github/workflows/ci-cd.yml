@@ -71,13 +71,13 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Download OpenAPI docs
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: contracts-openapi
           path: dist/contracts/openapi
 
       - name: Download AsyncAPI docs
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: contracts-asyncapi
           path: dist/contracts/asyncapi
