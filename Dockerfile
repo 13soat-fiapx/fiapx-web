@@ -5,7 +5,7 @@ COPY default.conf /etc/nginx/conf.d/default.conf
 COPY generate-config.sh /generate-config.sh
 RUN chmod +x /generate-config.sh
 
-COPY src/* /usr/share/nginx/html/
+COPY web/ /usr/share/nginx/html/
 
 EXPOSE 8080
 

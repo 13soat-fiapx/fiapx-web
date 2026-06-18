@@ -21,7 +21,7 @@ jobs:
           CLIENT_ID: ${{ secrets.AUTH0_CLIENT_ID }}
           AUDIENCE: ${{ vars.AUTH0_AUDIENCE }}
           API_BASE: ${{ vars.API_BASE }}
-          CONFIG_OUTPUT: src/config.js
+          CONFIG_OUTPUT: web/config.js
         run: sh generate-config.sh
 
       - name: Configure AWS credentials
@@ -32,7 +32,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Upload static files to S3
-        run: aws s3 sync src/ s3://${{ vars.S3_BUCKET }}/ --delete
+        run: aws s3 sync web/ s3://${{ vars.S3_BUCKET }}/ --delete
 
       - name: Invalidate CloudFront cache
         run: |
