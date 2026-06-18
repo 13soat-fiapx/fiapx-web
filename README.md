@@ -5,8 +5,10 @@ Interface web para o sistema FIAP X de processamento de vídeos.
 ## Tecnologias
 
 - [Alpine.js](https://alpinejs.dev/)
+- [AsyncAPI CLI](https://www.asyncapi.com/docs/tools/cli)
 - [Auth0](https://auth0.com/)
 - [Nginx](https://nginx.org/)
+- [Redocly CLI](https://redocly.com/docs/cli/)
 
 ## Configuração do ambiente
 
@@ -44,6 +46,12 @@ Acesse a interface em [http://localhost:8080](http://localhost:8080).
 O login é feito via Auth0 com Resource Owner Password Grant: o usuário informa e-mail e senha na própria interface, que os envia diretamente para a API do Auth0 e recebe um JWT em troca.
 
 Existem alternativas mais seguras (como o fluxo Authorization Code com PKCE), mas o contexto acadêmico com credenciais AWS Academy temporárias não justifica a complexidade extra.
+
+## Contratos
+
+Os contratos da API REST e de mensageria ficam em `contracts/`. A documentação HTML é gerada automaticamente durante o build e servida pelo Nginx nos caminhos `/contracts/openapi/` e `/contracts/asyncapi/`.
+
+Consulte [contracts/README.md](./contracts/README.md) para instruções de edição, validação e geração.
 
 ## Links úteis
 

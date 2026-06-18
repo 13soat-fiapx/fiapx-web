@@ -30,6 +30,7 @@
       <button class="tab" :class="{ active: page === 'upload' }"   @click="go('upload')"   x-show="token">upload</button>
     </div>
     <div class="tabbar-right">
+      <button class="tab tab-icon" :class="{ active: page === 'docs' }"     @click="go('docs')"     title="documentação"><i class="ph-duotone ph-book-open"></i></button>
       <button class="tab tab-icon" :class="{ active: page === 'settings' }" @click="go('settings')" title="configurações"><i class="ph-duotone ph-gear"></i></button>
     </div>
   </div>
@@ -219,6 +220,31 @@
           </div>
         </div>
       </template>
+    </div>
+  </div>
+
+
+  <div x-show="page === 'docs'">
+    <div class="card">
+      <div class="card-title">documentação</div>
+      <div class="docs-grid">
+        <a class="docs-card" href="contracts/openapi/" target="_blank" rel="noopener">
+          <i class="ph-duotone ph-plugs-connected docs-card-icon"></i>
+          <div class="docs-card-body">
+            <div class="docs-card-title">REST API</div>
+            <div class="docs-card-desc">Contrato OpenAPI: endpoints, schemas e exemplos da API HTTP.</div>
+          </div>
+          <i class="ph-duotone ph-arrow-square-out docs-card-ext"></i>
+        </a>
+        <a class="docs-card" href="contracts/asyncapi/" target="_blank" rel="noopener">
+          <i class="ph-duotone ph-broadcast docs-card-icon"></i>
+          <div class="docs-card-body">
+            <div class="docs-card-title">Mensageria</div>
+            <div class="docs-card-desc">Contrato AsyncAPI: eventos, canais e payloads de mensageria.</div>
+          </div>
+          <i class="ph-duotone ph-arrow-square-out docs-card-ext"></i>
+        </a>
+      </div>
     </div>
   </div>
 

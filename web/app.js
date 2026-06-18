@@ -11,6 +11,7 @@ const ROUTES = {
   status:   '/videos',
   upload:   '/upload',
   settings: '/settings',
+  docs:     '/docs',
 };
 
 const ROUTES_BY_PATH = {
@@ -19,6 +20,7 @@ const ROUTES_BY_PATH = {
   '/videos':   'status',
   '/upload':   'upload',
   '/settings': 'settings',
+  '/docs':     'docs',
 };
 
 function isStrongPassword(p) {

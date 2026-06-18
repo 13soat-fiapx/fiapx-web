@@ -1,0 +1,397 @@
+asyncapi: 3.1.0
+id: urn:fiapx:messaging:v1
+info:
+  title: FIAP X - Event Contracts
+  version: 1.0.0
+  contact:
+    name: FIAP X Team
+  license:
+    name: Academic Use
+  description: |
+    Contratos de mensageria para o fluxo assíncrono de processamento de vídeo do FIAP X.
+
+    Objetivos principais:
+    - Desacoplar API, workers do processor e notifier.
+    - Propagar W3C Trace Context com OpenTelemetry.
+    - Suportar consumidores idempotentes para a entrega at-least-once do SQS.
+    - Manter credenciais do AWS Student/Lab fora do contrato de mensagem da aplicação.
+
+defaultContentType: application/json
+
+servers:
+  awsStudent:
+    host: sqs.{region}.amazonaws.com
+    pathname: /{accountId}
+    protocol: sqs
+    title: Amazon SQS - AWS Student
+    summary: Broker Amazon SQS disponível na conta AWS Student/Lab.
+    description: |
+      Broker Amazon SQS usado pelo ambiente implantado.
+      A autenticação é fornecida pela configuração de execução do AWS Student/Lab e não faz parte deste contrato de eventos.
+    variables:
+      region:
+        default: us-east-1
+      accountId:
+        default: '123456789012'
+
+  local:
+    host: localhost:4566
+    protocol: sqs
+    title: Local SQS-compatible broker
+    summary: LocalStack ou outro broker compatível com SQS para desenvolvimento local.
+    description: Ambiente local para testes de contrato e desenvolvimento.
+
+channels:
+  videoProcessingRequestedQueue:
+    address: video-processing-requested
+    title: Video processing requested queue
+    summary: Fila para solicitações de processamento de vídeo.
+    description: |
+      Produtor: fiapx-api.
+      Consumidor: workers do fiapx-processor.
+    servers:
+      - $ref: '#/servers/awsStudent'
+      - $ref: '#/servers/local'
+    messages:
+      videoProcessingRequested:
+        $ref: '#/components/messages/VideoProcessingRequested'
+
+  videoProcessingCompletedQueue:
+    address: video-processing-completed
+    title: Video processing completed queue
+    summary: Fila para eventos de conclusão do processamento.
+    description: |
+      Produtor: fiapx-processor.
+      Consumidor: fiapx-notifier.
+    servers:
+      - $ref: '#/servers/awsStudent'
+      - $ref: '#/servers/local'
+    messages:
+      videoProcessingCompleted:
+        $ref: '#/components/messages/VideoProcessingCompleted'
+
+  videoProcessingRequestedDlq:
+    address: video-processing-requested-dlq
+    title: Video processing requested DLQ
+    summary: DLQ para falhas de consumo de solicitações de processamento.
+    description: Fila usada após o esgotamento do número máximo de recebimentos.
+    servers:
+      - $ref: '#/servers/awsStudent'
+      - $ref: '#/servers/local'
+    messages:
+      videoProcessingRequested:
+        $ref: '#/components/messages/VideoProcessingRequested'
+
+operations:
+  publishVideoProcessingRequested:
+    action: send
+    channel:
+      $ref: '#/channels/videoProcessingRequestedQueue'
+    summary: API publica uma solicitação de processamento após confirmar o upload no S3.
+    messages:
+      - $ref: '#/channels/videoProcessingRequestedQueue/messages/videoProcessingRequested'
+
+  consumeVideoProcessingRequested:
+    action: receive
+    channel:
+      $ref: '#/channels/videoProcessingRequestedQueue'
+    summary: Worker do processor consome uma solicitação de processamento de vídeo.
+    messages:
+      - $ref: '#/channels/videoProcessingRequestedQueue/messages/videoProcessingRequested'
+
+  publishVideoProcessingCompleted:
+    action: send
+    channel:
+      $ref: '#/channels/videoProcessingCompletedQueue'
+    summary: Worker do processor publica um evento de conclusão do processamento.
+    messages:
+      - $ref: '#/channels/videoProcessingCompletedQueue/messages/videoProcessingCompleted'
+
+  consumeVideoProcessingCompleted:
+    action: receive
+    channel:
+      $ref: '#/channels/videoProcessingCompletedQueue'
+    summary: Notifier consome um evento de conclusão do processamento.
+    messages:
+      - $ref: '#/channels/videoProcessingCompletedQueue/messages/videoProcessingCompleted'
+
+  consumeVideoProcessingRequestedDlq:
+    action: receive
+    channel:
+      $ref: '#/channels/videoProcessingRequestedDlq'
+    summary: Operação de suporte para triagem ou reprocessamento.
+    messages:
+      - $ref: '#/channels/videoProcessingRequestedDlq/messages/videoProcessingRequested'
+
+components:
+  schemas:
+    ProcessingStatus:
+      type: string
+      enum: [upload_pending, queued, processing, succeeded, failed]
+
+    ProcessingTerminalStatus:
+      type: string
+      enum: [succeeded, failed]
+
+    MessageSeverity:
+      type: string
+      enum: [info, warning, error]
+
+    ProcessingMessage:
+      type: object
+      additionalProperties: false
+      required: [code, message, severity]
+      properties:
+        code:
+          type: string
+          description: Identificador sistêmico da mensagem.
+          examples: [PROC-0007]
+        message:
+          type: string
+          examples: [ZIP gerado com sucesso.]
+        severity:
+          $ref: '#/components/schemas/MessageSeverity'
+
+    EventHeaders:
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - eventType
+        - eventVersion
+        - traceparent
+        - occurredAt
+        - source
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Identificador único do evento, usado para idempotência.
+        eventType:
+          type: string
+          description: Tipo canônico do evento.
+        eventVersion:
+          type: string
+          description: Versão do payload/evento usada pelo consumidor antes da desserialização.
+          examples: ['1.0']
+        traceparent:
+          type: string
+          description: Header W3C Trace Context propagado a partir da requisição HTTP original.
+        tracestate:
+          type: string
+          description: Estado opcional de vendor do W3C Trace Context.
+        baggage:
+          type: string
+          description: Contexto opcional do W3C Baggage.
+        occurredAt:
+          type: string
+          format: date-time
+          description: Timestamp em que o evento ocorreu.
+        source:
+          type: string
+          description: Serviço produtor do evento.
+          examples: [fiapx-api, fiapx-processor]
+
+    S3ObjectRef:
+      type: object
+      additionalProperties: false
+      required: [bucket, key]
+      properties:
+        bucket:
+          type: string
+        key:
+          type: string
+        region:
+          type: string
+          default: us-east-1
+
+    InputFileRef:
+      type: object
+      additionalProperties: false
+      required: [bucket, key, originalFileName, contentType, sizeBytes]
+      properties:
+        bucket:
+          type: string
+        key:
+          type: string
+        region:
+          type: string
+          default: us-east-1
+        originalFileName:
+          type: string
+        contentType:
+          type: string
+        sizeBytes:
+          type: integer
+          minimum: 0
+        checksum:
+          type: string
+
+    UserNotificationTarget:
+      type: object
+      additionalProperties: false
+      required: [id, name, email]
+      properties:
+        id:
+          type: string
+          description: Subject do usuário autenticado, propagado do processing job original.
+          examples: [auth0|abc123]
+        name:
+          type: string
+          description: Nome do usuário para composição da notificação.
+          examples: [Fulano de Tal]
+        email:
+          type: string
+          format: email
+          description: E-mail do usuário destinatário da notificação.
+          examples: [fulano@example.com]
+
+    VideoProcessingRequestedPayload:
+      type: object
+      additionalProperties: false
+      required:
+        - processingJobId
+        - userId
+        - inputFile
+        - outputPrefix
+      properties:
+        processingJobId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          description: Subject extraído do JWT.
+        description:
+          type: string
+        author:
+          type: string
+        clientReference:
+          type: string
+        inputFile:
+          $ref: '#/components/schemas/InputFileRef'
+        outputPrefix:
+          type: string
+          description: Prefixo S3 onde o worker do processor deve gravar frames e ZIP final.
+          examples: [frames/8f160f70-b26b-4eb2-8ff9-c69b4f8d2e0e/]
+        requestedAt:
+          type: string
+          format: date-time
+
+    VideoProcessingCompletedPayload:
+      type: object
+      additionalProperties: false
+      required:
+        - processingJobId
+        - user
+        - status
+        - messages
+        - completedAt
+      properties:
+        processingJobId:
+          type: string
+          format: uuid
+        user:
+          $ref: '#/components/schemas/UserNotificationTarget'
+        status:
+          $ref: '#/components/schemas/ProcessingTerminalStatus'
+        estimatedCompletionTime:
+          type: string
+          format: date-time
+          description: Última estimativa de conclusão calculada antes do término do processamento.
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProcessingMessage'
+        result:
+          type: object
+          additionalProperties: false
+          properties:
+            zipFile:
+              $ref: '#/components/schemas/S3ObjectRef'
+            sizeBytes:
+              type: integer
+              minimum: 0
+            checksum:
+              type: string
+        completedAt:
+          type: string
+          format: date-time
+
+  messages:
+    VideoProcessingRequested:
+      name: VideoProcessingRequested
+      title: Solicitação de processamento de vídeo
+      summary: Evento emitido pela API depois de confirmar o upload no S3.
+      contentType: application/json
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+      payload:
+        $ref: '#/components/schemas/VideoProcessingRequestedPayload'
+      correlationId:
+        description: O header `traceparent` carrega o identificador de rastreamento distribuído.
+        location: $message.header#/traceparent
+      examples:
+        - name: VideoProcessingRequestedExample
+          headers:
+            eventId: 01972ac2-949f-7c22-b40d-23f8fef30e9b
+            eventType: video.processing.requested
+            eventVersion: '1.0'
+            traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
+            occurredAt: '2026-05-29T21:00:00Z'
+            source: fiapx-api
+          payload:
+            processingJobId: 8f160f70-b26b-4eb2-8ff9-c69b4f8d2e0e
+            userId: auth0|abc123
+            description: Demo video
+            author: Fulano de Tal
+            clientReference: ticket-1234
+            inputFile:
+              bucket: fiapx-media
+              key: videos/8f160f70-b26b-4eb2-8ff9-c69b4f8d2e0e/original.mp4
+              region: us-east-1
+              originalFileName: video.mp4
+              contentType: video/mp4
+              sizeBytes: 15434877
+            outputPrefix: frames/8f160f70-b26b-4eb2-8ff9-c69b4f8d2e0e/
+            requestedAt: '2026-05-29T21:00:00Z'
+
+    VideoProcessingCompleted:
+      name: VideoProcessingCompleted
+      title: Processamento de vídeo concluído
+      summary: Evento emitido pelo worker do processor quando o processamento termina com sucesso ou falha.
+      contentType: application/json
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+      payload:
+        $ref: '#/components/schemas/VideoProcessingCompletedPayload'
+      correlationId:
+        description: O header `traceparent` carrega o identificador de rastreamento distribuído.
+        location: $message.header#/traceparent
+      examples:
+        - name: VideoProcessingCompletedExample
+          headers:
+            eventId: 01972ac2-af6d-7fd3-8ec4-71f9102d8901
+            eventType: video.processing.completed
+            eventVersion: '1.0'
+            traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-519aa4f8279bde01-01
+            occurredAt: '2026-05-29T21:03:22Z'
+            source: fiapx-processor
+          payload:
+            processingJobId: 8f160f70-b26b-4eb2-8ff9-c69b4f8d2e0e
+            user:
+              id: auth0|abc123
+              name: Fulano de Tal
+              email: fulano@example.com
+            status: succeeded
+            messages:
+              - code: PROC-1000
+                message: Processamento concluído com sucesso.
+                severity: info
+            result:
+              zipFile:
+                bucket: fiapx-media
+                key: frames/8f160f70-b26b-4eb2-8ff9-c69b4f8d2e0e/frames.zip
+                region: us-east-1
+              sizeBytes: 43888312
+              checksum: 0f9c2f5e5085f9c1d24a5149f8089a7ab8be4a29173c9e5a87525737f27a4f87
+            completedAt: '2026-05-29T21:03:20Z'

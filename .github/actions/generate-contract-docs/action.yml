@@ -1,0 +1,40 @@
+name: Generate contract docs
+description: Generates HTML documentation from an API contract spec (OpenAPI or AsyncAPI).
+
+inputs:
+  tool:
+    description: Generator tool — redocly or asyncapi
+    required: true
+  spec:
+    description: Path to the spec file relative to the workspace root
+    required: true
+  artifact:
+    description: Name of the artifact to upload
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@v5
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-npm-${{ inputs.tool }}
+
+    - uses: actions/setup-node@v5
+      with:
+        node-version: lts/*
+
+    - name: Generate (redocly)
+      if: inputs.tool == 'redocly'
+      shell: bash
+      run: npx --yes @redocly/cli build-docs ${{ inputs.spec }} -o ./out/index.html
+
+    - name: Generate (asyncapi)
+      if: inputs.tool == 'asyncapi'
+      shell: bash
+      run: npx --yes @asyncapi/cli generate fromTemplate ${{ inputs.spec }} @asyncapi/html-template --output ./out
+
+    - uses: actions/upload-artifact@v5
+      with:
+        name: ${{ inputs.artifact }}
+        path: out/
