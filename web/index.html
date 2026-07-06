@@ -133,9 +133,10 @@
       </div>
       <div class="divider"><span>endpoint</span></div>
       <div class="hint">
-        POST <span x-text="config.API_BASE"></span>/videos<br>
+        POST <span x-text="config.API_BASE"></span>/v1/processing-jobs<br>
         Authorization: Bearer ••••••••••••<br>
-        Content-Type: multipart/form-data
+        Content-Type: application/json<br>
+        <span class="hl">→ 1. criar job → 2. PUT direto no S3 → 3. confirmar upload</span>
       </div>
       <div class="curl-block" role="button" tabindex="0" @click="copyCurl('upload')" @keydown.enter.prevent="copyCurl('upload')" @keydown.space.prevent="copyCurl('upload')" title="copiar curl">
         <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'upload'" x-transition.opacity.duration.150ms></i>
@@ -164,10 +165,10 @@
           <tr x-show="videosLoading"><td colspan="4" class="empty">carregando...</td></tr>
           <tr x-show="!videosLoading && videosError"><td colspan="4" class="empty" x-text="videosError"></td></tr>
           <tr x-show="!videosLoading && !videosError && videos.length === 0"><td colspan="4" class="empty">nenhum vídeo encontrado.</td></tr>
-          <template x-for="v in videos" :key="v.name">
+          <template x-for="v in videos" :key="v.id">
             <tr>
-              <td class="mono" x-text="v.name"></td>
-              <td style="color:var(--muted);font-size:11px" x-text="v.created_at"></td>
+              <td class="mono" x-text="v.inputFile?.key?.split('/').pop() || v.id"></td>
+              <td style="color:var(--muted);font-size:11px" x-text="v.createdAt || '—'"></td>
               <td>
                 <span class="badge" :class="'badge-' + v.status">
                   <span class="dot"></span>
@@ -175,8 +176,8 @@
                 </span>
               </td>
               <td>
-                <a x-show="v.status === 'done' && v.zip_url" :href="v.zip_url" class="btn btn-sm" style="text-decoration:none"><i class="ph-duotone ph-download-simple"></i> download</a>
-                <button x-show="!(v.status === 'done' && v.zip_url)" class="btn btn-sm" disabled><i class="ph-duotone ph-download-simple"></i> download</button>
+                <button x-show="v.status === 'succeeded'" @click="downloadJob(v)" class="btn btn-sm"><i class="ph-duotone ph-download-simple"></i> download</button>
+                <button x-show="v.status !== 'succeeded'" class="btn btn-sm" disabled><i class="ph-duotone ph-download-simple"></i> download</button>
               </td>
             </tr>
           </template>
@@ -184,9 +185,9 @@
       </table>
       <div class="divider"><span>endpoint</span></div>
       <div class="hint">
-        GET <span x-text="config.API_BASE"></span>/videos<br>
+        GET <span x-text="config.API_BASE"></span>/v1/processing-jobs<br>
         Authorization: Bearer ••••••••••••<br>
-        <span class="hl">→ retorna apenas vídeos do usuário autenticado</span>
+        <span class="hl">→ retorna apenas jobs do usuário autenticado</span>
       </div>
       <div class="curl-block" role="button" tabindex="0" @click="copyCurl('status')" @keydown.enter.prevent="copyCurl('status')" @keydown.space.prevent="copyCurl('status')" title="copiar curl">
         <i class="ph-duotone ph-copy-simple curl-icon" x-show="curlCopied !== 'status'" x-transition.opacity.duration.150ms></i>

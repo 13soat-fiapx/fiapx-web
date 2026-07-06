@@ -2,7 +2,7 @@ const CONFIG = {
   AUTH0_DOMAIN: window.__AUTH0_DOMAIN__ || 'SEU_TENANT.us.auth0.com',
   AUTH0_CLIENT_ID: window.__AUTH0_CLIENT_ID__ || 'SEU_CLIENT_ID',
   AUTH0_AUDIENCE: window.__AUTH0_AUDIENCE__ || 'https://fiapx.io',
-  API_BASE: window.__API_BASE__ || 'http://localhost:8080',
+  API_BASE: window.__API_BASE__ || 'http://localhost:5000',
 };
 
 const ROUTES = {
@@ -66,7 +66,7 @@ function app() {
     settingsSaved: false,
     tokenCopied: false,
 
-    STATUS_LABELS: { queued: 'aguardando', processing: 'processando', done: 'concluído', error: 'erro' },
+    STATUS_LABELS: { upload_pending: 'aguardando upload', queued: 'na fila', processing: 'processando', succeeded: 'concluído', failed: 'erro' },
 
     init() {
       window.addEventListener('popstate', () => this._navigate(window.location.pathname));
@@ -262,50 +262,103 @@ function app() {
     },
 
     /**
-     * Uploads the selected video via XHR (required for upload progress events).
-     * Progress is capped at 80% until the server responds.
+     * Uploads a video via 3-step flow per the OpenAPI contract:
+     * 1. POST /v1/processing-jobs — get presigned S3 URL
+     * 2. PUT directly to S3 (XHR for progress events)
+     * 3. POST /v1/processing-jobs/{id}/upload-completion — confirm upload
+     *
+     * Note: S3 must have CORS configured to allow PUT from the app origin.
+     * The download flow depends on the backend exposing the signed URL in
+     * the FileResult _links (e.g. _links.content.href).
      */
-    upload() {
+    async upload() {
       if (!this.selectedFile) return;
 
+      const file = this.selectedFile;
       this.uploading = true;
       this.uploadDone = false;
       this.uploadProgress = 0;
       this.uploadError = '';
+      this.uploadSuccess = '';
       this.uploadMsg = '';
 
-      const form = new FormData();
-      form.append('video', this.selectedFile);
-
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${CONFIG.API_BASE}/videos`);
-      xhr.setRequestHeader('Authorization', 'Bearer ' + this.token);
-
-      xhr.upload.addEventListener('progress', e => {
-        if (e.lengthComputable) this.uploadProgress = Math.round((e.loaded / e.total) * 80);
-      });
-
-      xhr.addEventListener('load', () => {
-        this.uploadProgress = 100;
-        if (xhr.status >= 200 && xhr.status < 300) {
-          this.uploadDone = true;
-          this.uploadMsg = 'vídeo enviado — acompanhe em vídeos';
-          this.selectedFile = null;
-          this.fileName = '';
-          this.$refs.fileInput.value = '';
-        } else {
-          try { this.uploadError = JSON.parse(xhr.responseText).message || 'erro no upload'; }
-          catch { this.uploadError = 'erro no upload'; }
+      try {
+        // Step 1: Create processing job — returns presigned upload URL
+        const createRes = await fetch(`${CONFIG.API_BASE}/v1/processing-jobs`, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + this.token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            inputFile: {
+              originalFileName: file.name,
+              contentType: file.type || 'video/mp4',
+              sizeBytes: file.size,
+            },
+          }),
+        });
+        if (!createRes.ok) {
+          const err = await createRes.json().catch(() => ({}));
+          this.uploadError = err.detail || err.title || 'erro ao criar job de processamento';
           this.uploading = false;
+          return;
         }
-      });
+        const job = await createRes.json(); // ProcessingJobCreated
+        this.uploadProgress = 10;
 
-      xhr.addEventListener('error', () => {
-        this.uploadError = 'erro de conexão';
+        // Step 2: PUT file directly to S3 using the presigned URL (XHR for progress)
+        await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open(job.upload.method, job.upload.url);
+
+          const extraHeaders = job.upload.headers || {};
+          Object.entries(extraHeaders).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+
+          xhr.upload.addEventListener('progress', e => {
+            if (e.lengthComputable)
+              this.uploadProgress = 10 + Math.round((e.loaded / e.total) * 80);
+          });
+
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) resolve();
+            else reject(new Error(`upload S3 falhou (HTTP ${xhr.status})`));
+          });
+          xhr.addEventListener('error', () => reject(new Error('erro de conexão com S3')));
+          xhr.send(file);
+        });
+
+        this.uploadProgress = 90;
+
+        // Step 3: Confirm upload completion
+        const confirmRes = await fetch(
+          `${CONFIG.API_BASE}/v1/processing-jobs/${job.id}/upload-completion`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Bearer ' + this.token,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ sizeBytes: file.size }),
+          },
+        );
+        if (!confirmRes.ok) {
+          const err = await confirmRes.json().catch(() => ({}));
+          this.uploadError = err.detail || err.title || 'erro ao confirmar upload';
+          this.uploading = false;
+          return;
+        }
+
+        this.uploadProgress = 100;
+        this.uploadDone = true;
+        this.uploadSuccess = 'vídeo enviado — acompanhe em vídeos';
+        this.selectedFile = null;
+        this.fileName = '';
+        this.$refs.fileInput.value = '';
+      } catch (e) {
+        this.uploadError = e.message || 'erro no upload';
         this.uploading = false;
-      });
-
-      xhr.send(form);
+      }
     },
 
     // #endregion
@@ -313,26 +366,46 @@ function app() {
     // #region videos
 
     /**
-     * Fetches the authenticated user's video list from the API.
+     * Fetches the authenticated user's processing jobs from the API.
      */
     async loadVideos() {
       this.videosLoading = true;
       this.videosError = '';
       this.videos = [];
       try {
-        const res = await fetch(`${CONFIG.API_BASE}/videos`, {
+        const res = await fetch(`${CONFIG.API_BASE}/v1/processing-jobs`, {
           headers: { 'Authorization': 'Bearer ' + this.token },
         });
         if (!res.ok) {
-          this.videosError = 'erro ao carregar vídeos.';
+          this.videosError = 'erro ao carregar jobs de processamento.';
           return;
         }
-        this.videos = await res.json();
+        const data = await res.json();
+        this.videos = data.items || [];
       } catch {
         this.videosError = 'erro de conexão.';
       } finally {
         this.videosLoading = false;
       }
+    },
+
+    /**
+     * Downloads the result ZIP for a succeeded processing job.
+     * Follows the 303 from GET /v1/processing-jobs/{id} to GET /v1/files/{fileId},
+     * then opens the presigned download URL from the FileResult _links.
+     * Requires the backend to expose the signed URL in _links.content.href or similar.
+     */
+    async downloadJob(job) {
+      try {
+        const res = await fetch(`${CONFIG.API_BASE}/v1/processing-jobs/${job.id}`, {
+          headers: { 'Authorization': 'Bearer ' + this.token },
+          redirect: 'follow', // follows 303 → /v1/files/{fileId}
+        });
+        if (!res.ok) return;
+        const file = await res.json(); // FileResult
+        const href = file._links?.content?.href || file._links?.download?.href;
+        if (href) window.open(href, '_blank');
+      } catch { /* silent */ }
     },
 
     // #endregion
@@ -351,9 +424,9 @@ function app() {
       if (page === 'register')
         return `curl -s -X POST 'https://${CONFIG.AUTH0_DOMAIN}/dbconnections/signup' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"client_id":"${CONFIG.AUTH0_CLIENT_ID}","connection":"Username-Password-Authentication","email":"...","password":"...","user_metadata":{"name":"..."}}'`;
       if (page === 'upload')
-        return `curl -s -X POST '${this.config.API_BASE}/videos' \\\n  -H 'Authorization: Bearer ${mask}' \\\n  -F 'video=@arquivo.mp4'`;
+        return `curl -s -X POST '${this.config.API_BASE}/v1/processing-jobs' \\\n  -H 'Authorization: Bearer ${mask}' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"inputFile":{"originalFileName":"video.mp4","contentType":"video/mp4","sizeBytes":0}}'`;
       if (page === 'status')
-        return `curl -s '${this.config.API_BASE}/videos' \\\n  -H 'Authorization: Bearer ${mask}'`;
+        return `curl -s '${this.config.API_BASE}/v1/processing-jobs' \\\n  -H 'Authorization: Bearer ${mask}'`;
       return '';
     },
 
@@ -370,9 +443,9 @@ function app() {
       else if (page === 'register')
         text = `curl -s -X POST 'https://${CONFIG.AUTH0_DOMAIN}/dbconnections/signup' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"client_id":"${CONFIG.AUTH0_CLIENT_ID}","connection":"Username-Password-Authentication","email":"...","password":"...","user_metadata":{"name":"..."}}'`;
       else if (page === 'upload')
-        text = `curl -s -X POST '${this.config.API_BASE}/videos' \\\n  -H 'Authorization: Bearer ${tok}' \\\n  -F 'video=@arquivo.mp4'`;
+        text = `curl -s -X POST '${this.config.API_BASE}/v1/processing-jobs' \\\n  -H 'Authorization: Bearer ${tok}' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"inputFile":{"originalFileName":"video.mp4","contentType":"video/mp4","sizeBytes":0}}'`;
       else if (page === 'status')
-        text = `curl -s '${this.config.API_BASE}/videos' \\\n  -H 'Authorization: Bearer ${tok}'`;
+        text = `curl -s '${this.config.API_BASE}/v1/processing-jobs' \\\n  -H 'Authorization: Bearer ${tok}'`;
       if (!text) return;
       navigator.clipboard.writeText(text).then(() => {
         this.curlCopied = page;
