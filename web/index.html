@@ -208,7 +208,7 @@
       <div class="alert alert-ok" x-show="settingsSaved">configurações salvas.</div>
       <div class="field">
         <label>URL base da API</label>
-        <input type="text" x-model="settingsApiBase" placeholder="http://localhost:8080" @keydown.enter="saveSettings()">
+        <input type="text" x-model="settingsApiBase" placeholder="https://xxxxxxxx.execute-api.us-east-1.amazonaws.com/api" @keydown.enter="saveSettings()">
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
         <button class="btn btn-primary" @click="saveSettings()"><i class="ph-duotone ph-floppy-disk"></i> salvar</button>

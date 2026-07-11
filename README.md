@@ -26,6 +26,18 @@ notepad .env
 | `AUDIENCE`  | Identificador da API registrada no Auth0       |
 | `API_BASE`  | URL base da API de processamento de vídeos     |
 
+### Como obter a URL da API (AWS Academy)
+
+`API_BASE` deve apontar para o endpoint do API Gateway. Para obter a URL do ambiente `dev`, execute:
+
+```powershell
+aws apigatewayv2 get-apis --query "Items[?Name=='fiapx-dev-api'].ApiEndpoint | [0]" --output text
+```
+
+> Para outros ambientes, substitua `fiapx-dev-api` por `fiapx-stg-api` (staging) ou `fiapx-prod-api` (produção).
+
+Acrescente `/api` à URL retornada e cole o resultado no campo **URL base da API** na tela de CONFIG.
+
 ### Como obter o Client ID
 
 1. Acesse [manage.auth0.com](https://manage.auth0.com)

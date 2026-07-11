@@ -529,7 +529,7 @@ function app() {
     },
 
     resetSettings() {
-      const defaultBase = window.__API_BASE__ || 'http://localhost:8080';
+      const defaultBase = window.__API_BASE__ || 'http://localhost:5000';
       this.settingsApiBase = defaultBase;
       this.config.API_BASE = defaultBase;
       localStorage.removeItem('fiapx_api_base');
