@@ -42,6 +42,7 @@ function app() {
     loginPass: '',
     loginError: '',
     loginLoading: false,
+    rememberMe: true,
 
     regName: '',
     regEmail: '',
@@ -173,7 +174,7 @@ function app() {
         }
 
         this.token = data.access_token;
-        this.refreshToken = data.refresh_token || null;
+        this.refreshToken = (this.rememberMe && data.refresh_token) ? data.refresh_token : null;
         this.userEmail = this.loginEmail;
         localStorage.setItem('fiapx_token', this.token);
         if (this.refreshToken) localStorage.setItem('fiapx_refresh_token', this.refreshToken);
