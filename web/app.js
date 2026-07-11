@@ -35,12 +35,14 @@ function app() {
 
     page: 'login',
     token: null,
+    refreshToken: null,
     userEmail: null,
 
     loginEmail: '',
     loginPass: '',
     loginError: '',
     loginLoading: false,
+    rememberMe: true,
 
     regName: '',
     regEmail: '',
@@ -85,10 +87,19 @@ function app() {
       });
 
       const saved = localStorage.getItem('fiapx_token');
+      const savedRefresh = localStorage.getItem('fiapx_refresh_token');
       const savedEmail = localStorage.getItem('fiapx_email');
       if (saved) {
         this.token = saved;
+        this.refreshToken = savedRefresh;
         this.userEmail = savedEmail;
+        if (this._isTokenExpired()) {
+          if (savedRefresh) {
+            this._refreshToken().catch(() => this.logout());
+          } else {
+            this.logout();
+          }
+        }
       }
 
       const savedApiBase = localStorage.getItem('fiapx_api_base');
@@ -153,7 +164,7 @@ function app() {
             password: this.loginPass,
             audience: CONFIG.AUTH0_AUDIENCE,
             client_id: CONFIG.AUTH0_CLIENT_ID,
-            scope: 'openid profile email',
+            scope: 'openid profile email offline_access',
           }),
         });
         const data = await res.json();
@@ -163,8 +174,10 @@ function app() {
         }
 
         this.token = data.access_token;
+        this.refreshToken = (this.rememberMe && data.refresh_token) ? data.refresh_token : null;
         this.userEmail = this.loginEmail;
         localStorage.setItem('fiapx_token', this.token);
+        if (this.refreshToken) localStorage.setItem('fiapx_refresh_token', this.refreshToken);
         localStorage.setItem('fiapx_email', this.userEmail);
         this.go('status');
       } catch (e) {
@@ -222,10 +235,60 @@ function app() {
 
     logout() {
       this.token = null;
+      this.refreshToken = null;
       this.userEmail = null;
       localStorage.removeItem('fiapx_token');
+      localStorage.removeItem('fiapx_refresh_token');
       localStorage.removeItem('fiapx_email');
       this.go('login');
+    },
+
+    _isTokenExpired() {
+      if (!this.token) return true;
+      try {
+        const payload = JSON.parse(atob(this.token.split('.')[1]));
+        return payload.exp * 1000 < Date.now() + 30_000;
+      } catch {
+        return true;
+      }
+    },
+
+    async _refreshToken() {
+      if (!this.refreshToken) throw new Error('no refresh token');
+      const res = await fetch(`https://${CONFIG.AUTH0_DOMAIN}/oauth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          grant_type: 'refresh_token',
+          client_id: CONFIG.AUTH0_CLIENT_ID,
+          refresh_token: this.refreshToken,
+        }),
+      });
+      if (!res.ok) throw new Error('refresh failed');
+      const data = await res.json();
+      this.token = data.access_token;
+      if (data.refresh_token) this.refreshToken = data.refresh_token;
+      localStorage.setItem('fiapx_token', this.token);
+      if (data.refresh_token) localStorage.setItem('fiapx_refresh_token', this.refreshToken);
+      return this.token;
+    },
+
+    async _apiFetch(url, opts = {}) {
+      const withAuth = (token) => ({
+        ...opts,
+        headers: { ...opts.headers, 'Authorization': 'Bearer ' + token },
+      });
+      let res = await fetch(url, withAuth(this.token));
+      if (res.status === 401) {
+        try {
+          const newToken = await this._refreshToken();
+          res = await fetch(url, withAuth(newToken));
+        } catch {
+          this.logout();
+          throw new Error('sessão expirada — faça login novamente');
+        }
+      }
+      return res;
     },
 
     // #endregion
@@ -284,12 +347,9 @@ function app() {
 
       try {
         // Step 1: Create processing job — returns presigned upload URL
-        const createRes = await fetch(`${CONFIG.API_BASE}/v1/processing-jobs`, {
+        const createRes = await this._apiFetch(`${CONFIG.API_BASE}/v1/processing-jobs`, {
           method: 'POST',
-          headers: {
-            'Authorization': 'Bearer ' + this.token,
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             inputFile: {
               originalFileName: file.name,
@@ -331,14 +391,11 @@ function app() {
         this.uploadProgress = 90;
 
         // Step 3: Confirm upload completion
-        const confirmRes = await fetch(
+        const confirmRes = await this._apiFetch(
           `${CONFIG.API_BASE}/v1/processing-jobs/${job.id}/upload-completion`,
           {
             method: 'POST',
-            headers: {
-              'Authorization': 'Bearer ' + this.token,
-              'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sizeBytes: file.size }),
           },
         );
@@ -373,9 +430,7 @@ function app() {
       this.videosError = '';
       this.videos = [];
       try {
-        const res = await fetch(`${CONFIG.API_BASE}/v1/processing-jobs`, {
-          headers: { 'Authorization': 'Bearer ' + this.token },
-        });
+        const res = await this._apiFetch(`${CONFIG.API_BASE}/v1/processing-jobs`);
         if (!res.ok) {
           this.videosError = 'erro ao carregar jobs de processamento.';
           return;
@@ -397,8 +452,7 @@ function app() {
      */
     async downloadJob(job) {
       try {
-        const res = await fetch(`${CONFIG.API_BASE}/v1/processing-jobs/${job.id}`, {
-          headers: { 'Authorization': 'Bearer ' + this.token },
+        const res = await this._apiFetch(`${CONFIG.API_BASE}/v1/processing-jobs/${job.id}`, {
           redirect: 'follow', // follows 303 → /v1/files/{fileId}
         });
         if (!res.ok) return;
