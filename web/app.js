@@ -74,9 +74,14 @@ function app() {
       window.addEventListener('popstate', () => this._navigate(window.location.pathname));
 
       window.addEventListener('storage', e => {
+        if (e.key === 'fiapx_refresh_token') {
+          this.refreshToken = e.newValue || null;
+          return;
+        }
         if (e.key !== 'fiapx_token') return;
         if (!e.newValue) {
           this.token = null;
+          this.refreshToken = null;
           this.userEmail = null;
           this.go('login');
         } else {
@@ -178,6 +183,7 @@ function app() {
         this.userEmail = this.loginEmail;
         localStorage.setItem('fiapx_token', this.token);
         if (this.refreshToken) localStorage.setItem('fiapx_refresh_token', this.refreshToken);
+        else localStorage.removeItem('fiapx_refresh_token');
         localStorage.setItem('fiapx_email', this.userEmail);
         this.go('status');
       } catch (e) {
@@ -246,7 +252,8 @@ function app() {
     _isTokenExpired() {
       if (!this.token) return true;
       try {
-        const payload = JSON.parse(atob(this.token.split('.')[1]));
+        const b64 = this.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(atob(b64));
         return payload.exp * 1000 < Date.now() + 30_000;
       } catch {
         return true;
