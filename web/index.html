@@ -179,6 +179,14 @@
                   <span class="dot"></span>
                   <span x-text="STATUS_LABELS[v.status] || v.status"></span>
                 </span>
+                <div class="progress-wrap" x-show="v.status === 'processing' && v.progressPercentage != null" style="margin-top:6px">
+                  <div class="progress-label">
+                    <span x-text="Math.round(v.progressPercentage) + '%'"></span>
+                  </div>
+                  <div class="progress-bar">
+                    <div class="progress-fill" :style="{ width: v.progressPercentage + '%' }"></div>
+                  </div>
+                </div>
               </td>
               <td>
                 <button x-show="v.status === 'succeeded'" @click="downloadJob(v)" class="btn btn-sm" :disabled="downloadingIds.includes(v.id)"><i class="ph-duotone ph-download-simple"></i> download</button>
