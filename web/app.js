@@ -73,6 +73,7 @@ function app() {
     videosLoading: false,
     videosError: '',
     _videosPollId: null,
+    downloadingIds: [],
 
     settingsApiBase: '',
     settingsPollInterval: 5,
@@ -497,13 +498,29 @@ function app() {
       }
     },
 
+    _downloadViaHiddenFrame(url) {
+      const frame = document.createElement('iframe');
+      frame.style.display = 'none';
+      frame.src = url;
+      document.body.appendChild(frame);
+      setTimeout(() => frame.remove(), 60_000);
+    },
+
     /**
      * Downloads the result ZIP for a succeeded processing job.
-     * Follows the 303 from GET /v1/processing-jobs/{id} to GET /v1/files/{fileId},
-     * then opens the presigned download URL from the FileResult _links.
-     * Requires the backend to expose the signed URL in _links.content.href or similar.
+     * Follows the 303 from GET /v1/processing-jobs/{id} to GET /v1/files/{fileId} (FileResult),
+     * then GETs _links.content.href, which now returns JSON `{ url, expiresAt }` with the
+     * presigned S3 URL, and loads that URL into a hidden iframe so the browser downloads it
+     * without navigating the page away. A hidden iframe (rather than window.location) also lets
+     * multiple downloads run concurrently — each iframe is its own browsing context, so clicking
+     * two jobs' download buttons doesn't cancel the first in favor of the second the way
+     * reassigning window.location.href would. Using an iframe/navigation (rather than a JS fetch)
+     * also sidesteps CORS entirely — the browser tags a JS-followed cross-origin redirect with
+     * `Origin: null`, which S3 rejects, so we must never let JS traverse the API→S3 hop.
      */
     async downloadJob(job) {
+      if (this.downloadingIds.includes(job.id)) return;
+      this.downloadingIds.push(job.id);
       try {
         const res = await this._apiFetch(`${CONFIG.API_BASE}/v1/processing-jobs/${job.id}`, {
           redirect: 'follow', // follows 303 → /v1/files/{fileId}
@@ -511,8 +528,16 @@ function app() {
         if (!res.ok) return;
         const file = await res.json(); // FileResult
         const href = file._links?.content?.href || file._links?.download?.href;
-        if (href) window.open(href, '_blank');
-      } catch { /* silent */ }
+        if (!href) return;
+
+        const contentUrl = new URL(href, CONFIG.API_BASE).toString();
+        const contentRes = await this._apiFetch(contentUrl);
+        if (!contentRes.ok) return;
+        const { url } = await contentRes.json(); // { url, expiresAt }
+        if (url) this._downloadViaHiddenFrame(url);
+      } catch { /* silent */ } finally {
+        this.downloadingIds = this.downloadingIds.filter(id => id !== job.id);
+      }
     },
 
     // #endregion

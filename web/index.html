@@ -181,7 +181,7 @@
                 </span>
               </td>
               <td>
-                <button x-show="v.status === 'succeeded'" @click="downloadJob(v)" class="btn btn-sm"><i class="ph-duotone ph-download-simple"></i> download</button>
+                <button x-show="v.status === 'succeeded'" @click="downloadJob(v)" class="btn btn-sm" :disabled="downloadingIds.includes(v.id)"><i class="ph-duotone ph-download-simple"></i> download</button>
                 <button x-show="v.status !== 'succeeded'" class="btn btn-sm" disabled><i class="ph-duotone ph-download-simple"></i> download</button>
               </td>
             </tr>
