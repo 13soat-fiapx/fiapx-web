@@ -279,9 +279,6 @@ function app() {
       if (data.refresh_token) {
         this.refreshToken = data.refresh_token;
         localStorage.setItem('fiapx_refresh_token', this.refreshToken);
-      } else {
-        this.refreshToken = null;
-        localStorage.removeItem('fiapx_refresh_token');
       }
       localStorage.setItem('fiapx_token', this.token);
       return this.token;
