@@ -154,25 +154,26 @@
     <div class="card">
       <div class="status-header">
         <div class="card-title">meus vídeos</div>
-        <button class="btn btn-sm" @click="loadVideos()"><i class="ph-duotone ph-arrow-clockwise"></i> atualizar</button>
+        <button class="btn btn-sm" @click="loadVideos()" :disabled="videosLoading">
+          <i class="ph-duotone ph-arrow-clockwise" :class="{ spin: videosLoading }"></i>
+          <span x-text="videosLoading ? 'carregando...' : 'atualizar'"></span>
+        </button>
       </div>
       <table class="table">
         <thead>
           <tr>
-            <th>arquivo</th>
             <th>enviado em</th>
             <th>status</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          <tr x-show="videosLoading"><td colspan="4" class="empty">carregando...</td></tr>
-          <tr x-show="!videosLoading && videosError"><td colspan="4" class="empty" x-text="videosError"></td></tr>
-          <tr x-show="!videosLoading && !videosError && videos.length === 0"><td colspan="4" class="empty">nenhum vídeo encontrado.</td></tr>
+          <tr x-show="videosLoading && videos.length === 0"><td colspan="3" class="empty">carregando...</td></tr>
+          <tr x-show="!videosLoading && videosError"><td colspan="3" class="empty" x-text="videosError"></td></tr>
+          <tr x-show="!videosLoading && !videosError && videos.length === 0"><td colspan="3" class="empty">nenhum vídeo encontrado.</td></tr>
           <template x-for="v in videos" :key="v.id">
             <tr>
-              <td class="mono" x-text="v.inputFile?.key?.split('/').pop() || v.id"></td>
-              <td style="color:var(--muted);font-size:11px" x-text="v.createdAt || '—'"></td>
+              <td style="color:var(--muted);font-size:11px" x-text="formatDate(v.createdAt)"></td>
               <td>
                 <span class="badge" :class="'badge-' + v.status">
                   <span class="dot"></span>
@@ -209,6 +210,10 @@
       <div class="field">
         <label>URL base da API</label>
         <input type="text" x-model="settingsApiBase" placeholder="https://xxxxxxxx.execute-api.us-east-1.amazonaws.com/api" @keydown.enter="saveSettings()">
+      </div>
+      <div class="field">
+        <label>Intervalo de atualização automática (segundos)</label>
+        <input type="number" min="1" step="1" x-model.number="settingsPollInterval" placeholder="5" @keydown.enter="saveSettings()">
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
         <button class="btn btn-primary" @click="saveSettings()"><i class="ph-duotone ph-floppy-disk"></i> salvar</button>
