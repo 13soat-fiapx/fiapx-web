@@ -132,7 +132,7 @@
         </div>
       </div>
       <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
-        <button class="btn btn-primary" @click="upload()" :disabled="!selectedFile || uploading"><i class="ph-duotone ph-cloud-arrow-up"></i> enviar</button>
+        <button class="btn btn-primary" @click="upload()" x-show="!uploading" :disabled="!selectedFile"><i class="ph-duotone ph-cloud-arrow-up"></i> enviar</button>
         <span style="font-size:11px;color:var(--muted)" x-show="uploadMsg" x-text="uploadMsg"></span>
       </div>
       <div class="divider"><span>endpoint</span></div>
@@ -179,7 +179,7 @@
                   <span class="dot"></span>
                   <span x-text="STATUS_LABELS[v.status] || v.status"></span>
                 </span>
-                <div class="progress-wrap" x-show="v.status === 'processing' && v.progressPercentage != null" style="margin-top:6px">
+                <div class="progress-wrap" x-show="v.status === 'processing' && v.progressPercentage" style="margin-top:6px">
                   <div class="progress-label">
                     <span x-text="Math.round(v.progressPercentage) + '%'"></span>
                   </div>
