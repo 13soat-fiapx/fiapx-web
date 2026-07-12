@@ -31,7 +31,7 @@ tags:
   - name: Processing Jobs
     description: Jobs assíncronos que extraem frames e produzem artefatos ZIP.
   - name: Files
-    description: Artefatos finais e redirecionamentos para download assinado.
+    description: Artefatos finais e geração de URLs assinadas de download.
 paths:
   /v1/processing-jobs:
     get:
@@ -277,7 +277,7 @@ paths:
   /v1/files/{fileId}/content:
     get:
       tags: [Files]
-      summary: Redireciona para a URL assinada de download
+      summary: Gera a URL assinada de download
       operationId: downloadFile
       parameters:
         - $ref: '#/components/parameters/FileIdPath'
@@ -285,18 +285,15 @@ paths:
         - $ref: '#/components/parameters/TracestateHeader'
         - $ref: '#/components/parameters/BaggageHeader'
       responses:
-        '303':
-          description: Download indireto por URL assinada.
+        '200':
+          description: URL assinada de download do arquivo final.
           headers:
-            Location:
-              $ref: '#/components/headers/LocationHeader'
-            Cache-Control:
-              description: Cache de redirecionamento curto.
-              schema:
-                type: string
-                example: private, max-age=30
             traceparent:
               $ref: '#/components/headers/TraceparentResponseHeader'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileDownload'
         '401':
           $ref: '#/components/responses/UnauthorizedProblem'
         '403':
@@ -664,6 +661,20 @@ components:
           description: Expiração da URL assinada de download.
         _links:
           $ref: '#/components/schemas/Links'
+
+    FileDownload:
+      type: object
+      additionalProperties: false
+      required: [url, expiresAt]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: URL assinada para download direto no S3.
+        expiresAt:
+          type: string
+          format: date-time
+          description: Expiração da URL assinada de download.
 
     ProblemDetails:
       type: object

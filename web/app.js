@@ -3,6 +3,7 @@ const CONFIG = {
   AUTH0_CLIENT_ID: window.__AUTH0_CLIENT_ID__ || 'SEU_CLIENT_ID',
   AUTH0_AUDIENCE: window.__AUTH0_AUDIENCE__ || 'https://fiapx.io',
   API_BASE: window.__API_BASE__ || 'http://localhost:5000',
+  POLL_INTERVAL_SEC: 5,
 };
 
 const ROUTES = {
@@ -26,6 +27,14 @@ const ROUTES_BY_PATH = {
 function isStrongPassword(p) {
   const checks = [/[A-Z]/, /[a-z]/, /[0-9]/, /[^A-Za-z0-9]/];
   return p.length >= 8 && checks.filter(r => r.test(p)).length >= 3;
+}
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function app() {
@@ -63,8 +72,11 @@ function app() {
     videos: [],
     videosLoading: false,
     videosError: '',
+    _videosPollId: null,
+    downloadingIds: [],
 
     settingsApiBase: '',
+    settingsPollInterval: 5,
     settingsSaved: false,
     tokenCopied: false,
 
@@ -112,6 +124,10 @@ function app() {
       if (savedApiBase) this.config.API_BASE = savedApiBase;
       this.settingsApiBase = this.config.API_BASE;
 
+      const savedPollInterval = parseInt(localStorage.getItem('fiapx_poll_interval'), 10);
+      if (Number.isFinite(savedPollInterval) && savedPollInterval >= 0) this.config.POLL_INTERVAL_SEC = savedPollInterval;
+      this.settingsPollInterval = this.config.POLL_INTERVAL_SEC;
+
       this._navigate(window.location.pathname);
     },
 
@@ -119,8 +135,7 @@ function app() {
       const path = ROUTES[page] || '/login';
       if (window.location.pathname !== path)
         history.pushState(null, '', path);
-      this.page = page;
-      if (page === 'status') this.loadVideos();
+      this._setPage(page);
     },
 
     /**
@@ -142,8 +157,19 @@ function app() {
         return;
       }
 
+      this._setPage(page);
+    },
+
+    /**
+     * Applies the page transition, starting/stopping videos polling as needed.
+     */
+    _setPage(page) {
+      if (this.page === 'status' && page !== 'status') this._stopVideosPolling();
       this.page = page;
-      if (page === 'status') this.loadVideos();
+      if (page === 'status') {
+        this.loadVideos();
+        this._startVideosPolling();
+      }
     },
 
     // #region auth
@@ -433,13 +459,30 @@ function app() {
 
     // #region videos
 
+    _startVideosPolling() {
+      this._stopVideosPolling();
+      const seconds = this.config.POLL_INTERVAL_SEC;
+      if (!(seconds > 0)) return;
+      this._videosPollId = setInterval(() => this.loadVideos(), seconds * 1000);
+    },
+
+    _stopVideosPolling() {
+      if (this._videosPollId) {
+        clearInterval(this._videosPollId);
+        this._videosPollId = null;
+      }
+    },
+
+    formatDate(iso) {
+      return formatDate(iso);
+    },
+
     /**
      * Fetches the authenticated user's processing jobs from the API.
      */
     async loadVideos() {
       this.videosLoading = true;
       this.videosError = '';
-      this.videos = [];
       try {
         const res = await this._apiFetch(`${CONFIG.API_BASE}/v1/processing-jobs`);
         if (!res.ok) {
@@ -455,13 +498,29 @@ function app() {
       }
     },
 
+    _downloadViaHiddenFrame(url) {
+      const frame = document.createElement('iframe');
+      frame.style.display = 'none';
+      frame.src = url;
+      document.body.appendChild(frame);
+      setTimeout(() => frame.remove(), 60_000);
+    },
+
     /**
      * Downloads the result ZIP for a succeeded processing job.
-     * Follows the 303 from GET /v1/processing-jobs/{id} to GET /v1/files/{fileId},
-     * then opens the presigned download URL from the FileResult _links.
-     * Requires the backend to expose the signed URL in _links.content.href or similar.
+     * Follows the 303 from GET /v1/processing-jobs/{id} to GET /v1/files/{fileId} (FileResult),
+     * then GETs _links.content.href, which now returns JSON `{ url, expiresAt }` with the
+     * presigned S3 URL, and loads that URL into a hidden iframe so the browser downloads it
+     * without navigating the page away. A hidden iframe (rather than window.location) also lets
+     * multiple downloads run concurrently — each iframe is its own browsing context, so clicking
+     * two jobs' download buttons doesn't cancel the first in favor of the second the way
+     * reassigning window.location.href would. Using an iframe/navigation (rather than a JS fetch)
+     * also sidesteps CORS entirely — the browser tags a JS-followed cross-origin redirect with
+     * `Origin: null`, which S3 rejects, so we must never let JS traverse the API→S3 hop.
      */
     async downloadJob(job) {
+      if (this.downloadingIds.includes(job.id)) return;
+      this.downloadingIds.push(job.id);
       try {
         const res = await this._apiFetch(`${CONFIG.API_BASE}/v1/processing-jobs/${job.id}`, {
           redirect: 'follow', // follows 303 → /v1/files/{fileId}
@@ -469,8 +528,16 @@ function app() {
         if (!res.ok) return;
         const file = await res.json(); // FileResult
         const href = file._links?.content?.href || file._links?.download?.href;
-        if (href) window.open(href, '_blank');
-      } catch { /* silent */ }
+        if (!href) return;
+
+        const contentUrl = new URL(href, CONFIG.API_BASE).toString();
+        const contentRes = await this._apiFetch(contentUrl);
+        if (!contentRes.ok) return;
+        const { url } = await contentRes.json(); // { url, expiresAt }
+        if (url) this._downloadViaHiddenFrame(url);
+      } catch { /* silent */ } finally {
+        this.downloadingIds = this.downloadingIds.filter(id => id !== job.id);
+      }
     },
 
     // #endregion
@@ -532,9 +599,16 @@ function app() {
 
     saveSettings() {
       const v = this.settingsApiBase.trim();
-      if (!v) return;
-      this.config.API_BASE = v;
-      localStorage.setItem('fiapx_api_base', v);
+      if (v) {
+        this.config.API_BASE = v;
+        localStorage.setItem('fiapx_api_base', v);
+      }
+      const seconds = Number(this.settingsPollInterval);
+      if (Number.isFinite(seconds) && seconds >= 0) {
+        this.config.POLL_INTERVAL_SEC = seconds;
+        localStorage.setItem('fiapx_poll_interval', String(seconds));
+        if (this.page === 'status') this._startVideosPolling();
+      }
       this.settingsSaved = true;
       setTimeout(() => { this.settingsSaved = false; }, 2000);
     },
@@ -544,6 +618,11 @@ function app() {
       this.settingsApiBase = defaultBase;
       this.config.API_BASE = defaultBase;
       localStorage.removeItem('fiapx_api_base');
+
+      this.settingsPollInterval = 5;
+      this.config.POLL_INTERVAL_SEC = 5;
+      localStorage.removeItem('fiapx_poll_interval');
+
       this.settingsSaved = true;
       setTimeout(() => { this.settingsSaved = false; }, 2000);
     },
