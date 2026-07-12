@@ -213,7 +213,8 @@
       </div>
       <div class="field">
         <label>Intervalo de atualização automática (segundos)</label>
-        <input type="number" min="1" step="1" x-model.number="settingsPollInterval" placeholder="5" @keydown.enter="saveSettings()">
+        <input type="number" min="0" step="1" x-model.number="settingsPollInterval" placeholder="5" @keydown.enter="saveSettings()">
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">use 0 para desativar a atualização automática.</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
         <button class="btn btn-primary" @click="saveSettings()"><i class="ph-duotone ph-floppy-disk"></i> salvar</button>

@@ -124,7 +124,7 @@ function app() {
       this.settingsApiBase = this.config.API_BASE;
 
       const savedPollInterval = parseInt(localStorage.getItem('fiapx_poll_interval'), 10);
-      if (Number.isFinite(savedPollInterval) && savedPollInterval > 0) this.config.POLL_INTERVAL_SEC = savedPollInterval;
+      if (Number.isFinite(savedPollInterval) && savedPollInterval >= 0) this.config.POLL_INTERVAL_SEC = savedPollInterval;
       this.settingsPollInterval = this.config.POLL_INTERVAL_SEC;
 
       this._navigate(window.location.pathname);
@@ -460,7 +460,8 @@ function app() {
 
     _startVideosPolling() {
       this._stopVideosPolling();
-      const seconds = this.config.POLL_INTERVAL_SEC > 0 ? this.config.POLL_INTERVAL_SEC : 5;
+      const seconds = this.config.POLL_INTERVAL_SEC;
+      if (!(seconds > 0)) return;
       this._videosPollId = setInterval(() => this.loadVideos(), seconds * 1000);
     },
 
@@ -578,9 +579,10 @@ function app() {
         localStorage.setItem('fiapx_api_base', v);
       }
       const seconds = Number(this.settingsPollInterval);
-      if (Number.isFinite(seconds) && seconds > 0) {
+      if (Number.isFinite(seconds) && seconds >= 0) {
         this.config.POLL_INTERVAL_SEC = seconds;
         localStorage.setItem('fiapx_poll_interval', String(seconds));
+        if (this.page === 'status') this._startVideosPolling();
       }
       this.settingsSaved = true;
       setTimeout(() => { this.settingsSaved = false; }, 2000);
