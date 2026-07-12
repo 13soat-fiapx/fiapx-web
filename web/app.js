@@ -86,6 +86,7 @@ function app() {
           this.go('login');
         } else {
           this.token = e.newValue;
+          this.refreshToken = localStorage.getItem('fiapx_refresh_token') || null;
           this.userEmail = localStorage.getItem('fiapx_email');
           this.go('status');
         }
@@ -253,7 +254,8 @@ function app() {
       if (!this.token) return true;
       try {
         const b64 = this.token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-        const payload = JSON.parse(atob(b64));
+        const padded = b64.padEnd(b64.length + (4 - b64.length % 4) % 4, '=');
+        const payload = JSON.parse(atob(padded));
         return payload.exp * 1000 < Date.now() + 30_000;
       } catch {
         return true;
@@ -274,9 +276,14 @@ function app() {
       if (!res.ok) throw new Error('refresh failed');
       const data = await res.json();
       this.token = data.access_token;
-      if (data.refresh_token) this.refreshToken = data.refresh_token;
+      if (data.refresh_token) {
+        this.refreshToken = data.refresh_token;
+        localStorage.setItem('fiapx_refresh_token', this.refreshToken);
+      } else {
+        this.refreshToken = null;
+        localStorage.removeItem('fiapx_refresh_token');
+      }
       localStorage.setItem('fiapx_token', this.token);
-      if (data.refresh_token) localStorage.setItem('fiapx_refresh_token', this.refreshToken);
       return this.token;
     },
 
