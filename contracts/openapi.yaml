@@ -32,7 +32,38 @@ tags:
     description: Jobs assíncronos que extraem frames e produzem artefatos ZIP.
   - name: Files
     description: Artefatos finais e geração de URLs assinadas de download.
+  - name: Users
+    description: Dados do usuário autenticado.
 paths:
+  /v1/me:
+    get:
+      tags: [Users]
+      summary: Retorna os dados do usuário autenticado
+      description: |
+        Resolve o `sub` a partir do JWT e complementa nome e e-mail via endpoint `/userinfo` do Auth0,
+        para que o cliente não precise chamar o Auth0 diretamente nem decodificar o token.
+      operationId: getCurrentUser
+      parameters:
+        - $ref: '#/components/parameters/TraceparentHeader'
+        - $ref: '#/components/parameters/TracestateHeader'
+        - $ref: '#/components/parameters/BaggageHeader'
+      responses:
+        '200':
+          description: Dados do usuário autenticado.
+          headers:
+            traceparent:
+              $ref: '#/components/headers/TraceparentResponseHeader'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUser'
+        '401':
+          $ref: '#/components/responses/UnauthorizedProblem'
+        '403':
+          $ref: '#/components/responses/ForbiddenProblem'
+        '500':
+          $ref: '#/components/responses/InternalServerErrorProblem'
+
   /v1/processing-jobs:
     get:
       tags: [Processing Jobs]
@@ -435,6 +466,23 @@ components:
             $ref: '#/components/schemas/ProblemDetails'
 
   schemas:
+    CurrentUser:
+      type: object
+      additionalProperties: false
+      required: [id, name, email]
+      properties:
+        id:
+          type: string
+          description: Subject do usuário no Auth0.
+          example: auth0|abc123
+        name:
+          type: string
+          example: Fulano de Tal
+        email:
+          type: string
+          format: email
+          example: fulano@example.com
+
     ProcessingStatus:
       type: string
       enum: [upload_pending, queued, processing, succeeded, failed]
@@ -487,7 +535,8 @@ components:
       properties:
         bucket:
           type: string
-          example: fiapx-media
+          description: Bucket de artefatos do ambiente, no padrão `fiapx-{env}-artifacts-{accountId}`.
+          example: fiapx-prod-artifacts-123456789012
         key:
           type: string
           description: Chave do objeto no S3.

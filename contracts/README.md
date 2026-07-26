@@ -6,8 +6,8 @@ Especificações formais da API REST e dos eventos de mensageria do sistema FIAP
 
 | Arquivo | Tipo | Descrição |
 |---|---|---|
-| `asyncapi.yaml` | AsyncAPI 2.x | Contrato de eventos e mensageria. |
-| `openapi.yaml` | OpenAPI 3.x | Contrato REST da API de processamento de vídeos. |
+| `asyncapi.yaml` | AsyncAPI 3.1.0 | Contrato de eventos e mensageria. |
+| `openapi.yaml` | OpenAPI 3.1.1 | Contrato REST da API de processamento de vídeos. |
 
 ## Edição
 
@@ -38,6 +38,10 @@ A documentação fica disponível em:
 |---|---|
 | REST API | `http://localhost:8080/contracts/openapi/` |
 | Mensageria | `http://localhost:8080/contracts/asyncapi/` |
+
+## Pipeline de CI/CD
+
+Ao realizar merge na branch `main`, o projeto é compilado e fica disponível através dos links de documentação na interface web.
 
 ## Ferramentas
 

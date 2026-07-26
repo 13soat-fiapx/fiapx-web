@@ -74,13 +74,31 @@ channels:
     address: video-processing-requested-dlq
     title: Video processing requested DLQ
     summary: DLQ para falhas de consumo de solicitações de processamento.
-    description: Fila usada após o esgotamento do número máximo de recebimentos.
+    description: |
+      Fila usada após o esgotamento do maxReceiveCount (3).
+      Recebe apenas falhas irrecuperáveis: o worker trata as falhas de processamento comuns marcando o job
+      como failed e publicando em video-processing-completed, sem que a mensagem chegue aqui.
+      Sem consumidor automático — as mensagens ficam retidas 14 dias para análise manual.
     servers:
       - $ref: '#/servers/awsStudent'
       - $ref: '#/servers/local'
     messages:
       videoProcessingRequested:
         $ref: '#/components/messages/VideoProcessingRequested'
+
+  videoProcessingCompletedDlq:
+    address: video-processing-completed-dlq
+    title: Video processing completed DLQ
+    summary: DLQ para falhas de consumo de eventos de conclusão.
+    description: |
+      Fila usada após o esgotamento do maxReceiveCount (3) no consumo pelo notifier.
+      Sem consumidor automático — as mensagens ficam retidas 14 dias para análise manual.
+    servers:
+      - $ref: '#/servers/awsStudent'
+      - $ref: '#/servers/local'
+    messages:
+      videoProcessingCompleted:
+        $ref: '#/components/messages/VideoProcessingCompleted'
 
 operations:
   publishVideoProcessingRequested:
@@ -119,9 +137,17 @@ operations:
     action: receive
     channel:
       $ref: '#/channels/videoProcessingRequestedDlq'
-    summary: Operação de suporte para triagem ou reprocessamento.
+    summary: Leitura manual da DLQ para diagnóstico de falhas irrecuperáveis.
     messages:
       - $ref: '#/channels/videoProcessingRequestedDlq/messages/videoProcessingRequested'
+
+  consumeVideoProcessingCompletedDlq:
+    action: receive
+    channel:
+      $ref: '#/channels/videoProcessingCompletedDlq'
+    summary: Leitura manual da DLQ para diagnóstico de notificações irrecuperáveis.
+    messages:
+      - $ref: '#/channels/videoProcessingCompletedDlq/messages/videoProcessingCompleted'
 
 components:
   schemas:
@@ -346,7 +372,7 @@ components:
             author: Fulano de Tal
             clientReference: ticket-1234
             inputFile:
-              bucket: fiapx-media
+              bucket: fiapx-prod-artifacts-123456789012
               key: videos/8f160f70-b26b-4eb2-8ff9-c69b4f8d2e0e/original.mp4
               region: us-east-1
               originalFileName: video.mp4
@@ -389,7 +415,7 @@ components:
                 severity: info
             result:
               zipFile:
-                bucket: fiapx-media
+                bucket: fiapx-prod-artifacts-123456789012
                 key: frames/8f160f70-b26b-4eb2-8ff9-c69b4f8d2e0e/frames.zip
                 region: us-east-1
               sizeBytes: 43888312
