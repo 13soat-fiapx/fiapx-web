@@ -25,6 +25,8 @@ notepad .env
 | `CLIENT_ID` | Client ID da aplicação registrada no Auth0     |
 | `AUDIENCE`  | Identificador da API registrada no Auth0       |
 | `API_BASE`  | URL base da API de processamento de vídeos     |
+| `MAX_VIDEO_DURATION_SECONDS` | Duração máxima de vídeo, em segundos |
+| `MAX_FILE_SIZE_BYTES` | Tamanho máximo de arquivo, em bytes |
 
 ### Como obter a URL da API (AWS Academy)
 
