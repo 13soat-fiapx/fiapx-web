@@ -160,8 +160,6 @@ paths:
           $ref: '#/components/responses/ForbiddenProblem'
         '409':
           $ref: '#/components/responses/ConflictProblem'
-        '413':
-          $ref: '#/components/responses/PayloadTooLargeProblem'
         '415':
           $ref: '#/components/responses/UnsupportedMediaTypeProblem'
         '422':
@@ -215,8 +213,6 @@ paths:
           $ref: '#/components/responses/NotFoundProblem'
         '409':
           $ref: '#/components/responses/ConflictProblem'
-        '413':
-          $ref: '#/components/responses/PayloadTooLargeProblem'
         '415':
           $ref: '#/components/responses/UnsupportedMediaTypeProblem'
         '422':
@@ -427,12 +423,6 @@ components:
             $ref: '#/components/schemas/ProblemDetails'
     ConflictProblem:
       description: Conflito de estado ou duplicidade
-      content:
-        application/problem+json:
-          schema:
-            $ref: '#/components/schemas/ProblemDetails'
-    PayloadTooLargeProblem:
-      description: Tamanho de payload acima do limite
       content:
         application/problem+json:
           schema:
