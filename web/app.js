@@ -3,8 +3,12 @@ const CONFIG = {
   AUTH0_CLIENT_ID: window.__AUTH0_CLIENT_ID__ || 'SEU_CLIENT_ID',
   AUTH0_AUDIENCE: window.__AUTH0_AUDIENCE__ || 'https://fiapx.io',
   API_BASE: window.__API_BASE__ || 'http://localhost:5000',
+  MAX_VIDEO_DURATION_SECONDS: Number(window.__MAX_VIDEO_DURATION_SECONDS__) || 600,
+  MAX_FILE_SIZE_BYTES: Number(window.__MAX_FILE_SIZE_BYTES__) || 314572800,
   POLL_INTERVAL_SEC: 5,
 };
+CONFIG.MAX_VIDEO_DURATION_MINUTES = Math.round(CONFIG.MAX_VIDEO_DURATION_SECONDS / 60);
+CONFIG.MAX_FILE_SIZE_MB = (CONFIG.MAX_FILE_SIZE_BYTES / (1024 * 1024)).toFixed(1).replace('.', ',');
 
 const ROUTES = {
   login:    '/login',

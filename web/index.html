@@ -119,7 +119,7 @@
         <input type="file" x-ref="fileInput" accept="video/*" @change="onFileSelect($event)">
         <div class="uz-icon"><i class="ph-duotone ph-cloud-arrow-up"></i></div>
         <p>clique ou arraste um arquivo de vídeo</p>
-        <p style="font-size:10px;margin-top:4px">mp4, avi, mov, mkv — limite configurável</p>
+        <p style="font-size:10px;margin-top:4px">mp4, avi, mov, mkv — limite de <span x-text="config.MAX_VIDEO_DURATION_MINUTES"></span> minutos ou <span x-text="config.MAX_FILE_SIZE_MB"></span> MB</p>
         <div class="filename" x-text="fileName"></div>
       </div>
       <div class="progress-wrap" x-show="uploading">
